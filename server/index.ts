@@ -1190,8 +1190,18 @@ app.post('/api/generate-video', requireCloudspaceDomain, async (req, res) => {
     const veoResult = await synthesizeVeoVideo(imageBuffer, promptToUse, slotIndex, qualityMode, apiKey);
 
     if (veoResult.success && veoResult.videoBuffer) {
-      fs.writeFileSync(rawVideoPath, veoResult.videoBuffer);
-      addLog('SUCCESS', 'VEO_AI', `Real Veo 3 Video written to ${videoFilename} (${veoResult.modelUsed})`);
+      const tempRawPath = path.join(OUTPUT_DIR, `temp_${videoFilename}`);
+      fs.writeFileSync(tempRawPath, veoResult.videoBuffer);
+
+      // Strip all audio streams immediately with instant stream copy (-an -c:v copy) to guarantee 100% muted video
+      try {
+        await execFFmpeg(['-y', '-i', tempRawPath, '-c:v', 'copy', '-an', rawVideoPath]);
+        if (fs.existsSync(tempRawPath)) fs.unlinkSync(tempRawPath);
+      } catch (stripErr) {
+        if (fs.existsSync(tempRawPath)) fs.renameSync(tempRawPath, rawVideoPath);
+      }
+
+      addLog('SUCCESS', 'VEO_AI', `Real Veo 3 Muted Video written to ${videoFilename} (${veoResult.modelUsed})`);
       return res.json({
         success: true,
         rawVideoUri: `/output/${videoFilename}`,
