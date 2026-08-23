@@ -10,6 +10,8 @@ import {
   ChevronDown,
   ChevronUp,
   Image as ImageIcon,
+  AlertTriangle,
+  Info,
 } from 'lucide-react';
 import { CountdownSlot, VideoQualityMode } from '../types';
 import { getMediaUrl } from '../utils/media';
@@ -167,6 +169,42 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                   <div className="w-56 h-1.5 bg-slate-800 rounded-full overflow-hidden mx-auto">
                     <div className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-400 animate-pulse w-full" />
                   </div>
+                </div>
+              </div>
+            ) : slot.videoError ? (
+              <div className="aspect-video w-full rounded-xl bg-slate-950/95 border border-rose-500/50 relative overflow-hidden flex flex-col items-center justify-center p-6 text-center shadow-inner space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 mx-auto shadow-lg shadow-rose-500/20">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div className="space-y-1 max-w-md">
+                  <span className="text-xs font-bold text-rose-400 uppercase tracking-wider block">
+                    Veo 3 Video Generation Paused
+                  </span>
+                  <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                    {slot.videoError.toLowerCase().includes('quota') || slot.videoError.toLowerCase().includes('429')
+                      ? 'Google Veo AI is currently handling heavy traffic across the region. Click Retry below.'
+                      : slot.videoError.toLowerCase().includes('timeout') || slot.videoError.toLowerCase().includes('140s')
+                      ? 'Video generation took longer than expected. Click Retry to re-submit this shot.'
+                      : 'Google Veo 3 video generation encountered a transient issue. Click Retry to generate with optimal settings.'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => onGenerateVideo(slot.index, 'FAST_720P')}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg transition-all active:scale-95"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>⚡ Retry 720p Fast</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onGenerateVideo(slot.index, 'FULL_4K')}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-all active:scale-95"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>🌟 Retry 4K Master</span>
+                  </button>
                 </div>
               </div>
             ) : (

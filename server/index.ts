@@ -973,8 +973,6 @@ async function synthesizeVeoVideo(
                     sampleCount: 1,
                     aspectRatio: '16:9',
                     durationSeconds: 4,
-                    fps: 60,
-                    personGeneration: 'allow_adult',
                   },
                 }),
               }
@@ -1085,8 +1083,6 @@ async function synthesizeVeoVideo(
                   sampleCount: 1,
                   aspectRatio: '16:9',
                   durationSeconds: 4,
-                  fps: 60,
-                  personGeneration: 'allow_adult',
                 },
               }),
             });
