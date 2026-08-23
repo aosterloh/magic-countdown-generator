@@ -15,6 +15,8 @@ export interface SlotTemporalConfig {
   trimEndSeconds: number;
 }
 
+export type VideoQualityMode = 'FAST_720P' | 'FULL_4K';
+
 export interface CountdownSlot {
   index: number; // 10 down to 1
   diegeticNumber: number;
@@ -41,6 +43,7 @@ export interface CountdownSlot {
 
   // Video Generation State
   rawVideoUri: string | null; // 4.0s raw Veo output
+  videoQuality?: VideoQualityMode;
   isVideoLoading: boolean;
   activeWorkerId?: number | null;
   videoError: string | null;

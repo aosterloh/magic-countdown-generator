@@ -333,10 +333,17 @@
       <div class="flow-step">
         <div class="flow-step-title">
           <span class="badge badge-purple">Stage 4</span>
-          Veo 3 Image-to-Video Synthesis (10 &times; 4.0s @ 60fps)
+          Veo 3 Image-to-Video Synthesis & Dual Quality Tier Toggle (720p Fast / 4K Full)
         </div>
         <p>
-          Synthesizes 4.0-second motion clips using Google Veo 3 / dynamic 60fps motion zoom without audio. Displays a responsive 30% static frame / 70% video player layout with individual playback controls.
+          Synthesizes 4.0-second motion clips using 2 parallel AI worker cores (Worker Alpha & Worker Beta) with real-time status animations. Offers a dedicated quality toggle:
+        </p>
+        <ul>
+          <li><strong>⚡ Fast Preview Tier (720p @ 60fps):</strong> Low-latency $1280 \times 720$ synthesis for rapid review of camera motion pacing, diegetic reveal timing, and beat synchronization.</li>
+          <li><strong>🌟 Full Broadcast Master Tier (4K UHD @ 60fps):</strong> High-fidelity $3840 \times 2160$ synthesis with low compression CRF 15 for broadcast-grade presentation.</li>
+        </ul>
+        <p>
+          Displays a responsive 30% static frame / 70% video player layout with live synthesis scanner and individual playback controls.
         </p>
       </div>
 

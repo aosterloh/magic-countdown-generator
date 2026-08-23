@@ -22,7 +22,7 @@ import { WaveformTimeline } from './components/WaveformTimeline';
 import { RefineModal } from './components/RefineModal';
 import { MasterExportModal } from './components/MasterExportModal';
 import { GoogleAuthGate } from './components/GoogleAuthGate';
-import { CountdownSlot, ImageModelType, AuthMode, SlotTemporalConfig } from './types';
+import { CountdownSlot, ImageModelType, AuthMode, SlotTemporalConfig, VideoQualityMode } from './types';
 import { UNIVERSAL_STYLE_ANCHOR } from './utils/promptBuilder';
 import { calculateTimelineOffsets } from './utils/temporalMath';
 
@@ -421,12 +421,19 @@ export const App: React.FC = () => {
     }
   };
 
+  // Video Quality Mode State (Fast 720p preview vs Full 4K broadcast master)
+  const [selectedVideoQuality, setSelectedVideoQuality] = useState<VideoQualityMode>('FAST_720P');
+
   // Active Parallel Video Workers State (tracks which 2 slots are actively being synthesized)
   const [activeVideoSlots, setActiveVideoSlots] = useState<{ workerId: number; slotIndex: number; concept: string }[]>([]);
   const [isBatchGeneratingVideos, setIsBatchGeneratingVideos] = useState(false);
 
   // 3. Generate Veo 3 Video for single slot (No Audio, 4.0s @ 60fps)
-  const handleGenerateVideoForSlot = async (slotIndex: number, workerId: number = 1) => {
+  const handleGenerateVideoForSlot = async (
+    slotIndex: number,
+    workerId: number = 1,
+    qualityMode: VideoQualityMode = selectedVideoQuality
+  ) => {
     const targetSlot = slots.find((s) => s.index === slotIndex);
     if (!targetSlot?.currentImageUri) return;
 
@@ -446,6 +453,7 @@ export const App: React.FC = () => {
         body: JSON.stringify({
           slotIndex,
           imageUri: targetSlot.currentImageUri,
+          qualityMode,
         }),
       });
       const data = await res.json();
@@ -454,7 +462,7 @@ export const App: React.FC = () => {
         setSlots((prev) =>
           prev.map((s) =>
             s.index === slotIndex
-              ? { ...s, rawVideoUri: data.rawVideoUri, isVideoLoading: false, activeWorkerId: null }
+              ? { ...s, rawVideoUri: data.rawVideoUri, videoQuality: qualityMode, isVideoLoading: false, activeWorkerId: null }
               : s
           )
         );
@@ -471,9 +479,10 @@ export const App: React.FC = () => {
   };
 
   // Batch Generate all 10 Veo 3 videos (2 parallel workers)
-  const handleGenerateAllVideos = async () => {
+  const handleGenerateAllVideos = async (qualityMode: VideoQualityMode = selectedVideoQuality) => {
     setCurrentStage(4);
     setIsBatchGeneratingVideos(true);
+    setSelectedVideoQuality(qualityMode);
     const slotsWithImages = [...slots].filter((s) => Boolean(s.currentImageUri));
     const sorted = [...slotsWithImages].sort((a, b) => b.diegeticNumber - a.diegeticNumber);
 
@@ -483,7 +492,7 @@ export const App: React.FC = () => {
         const itemIndex = cursor++;
         const s = sorted[itemIndex];
         if (!s) break;
-        await handleGenerateVideoForSlot(s.index, workerId);
+        await handleGenerateVideoForSlot(s.index, workerId, qualityMode);
       }
     };
 
@@ -714,7 +723,7 @@ export const App: React.FC = () => {
                       onRedo={handleRedoShot}
                       onRollback={handleRollbackShot}
                       onOpenRefine={setActiveRefineSlot}
-                      onGenerateVideo={handleGenerateVideoForSlot}
+                      onGenerateVideo={(slotIdx, quality) => handleGenerateVideoForSlot(slotIdx, 1, quality)}
                       onPlayVideo={setPreviewVideoUri}
                     />
                   ))}
@@ -749,7 +758,7 @@ export const App: React.FC = () => {
         {/* STAGE 4: Veo 3 Video Generation Banner & Action */}
         {currentStage >= 4 && (
           <section className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-900/40 shadow-xl space-y-6 animate-fadeIn">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400">
                   <Video className="w-6 h-6" />
@@ -762,26 +771,63 @@ export const App: React.FC = () => {
                     </span>
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Generates 4.0-second 16:9 widescreen 60fps cinematic clips with camera motion reveal.
+                    Toggle between rapid 720p preview generation or high-fidelity 4K UHD broadcast master synthesis.
                   </p>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={handleGenerateAllVideos}
-                disabled={isBatchGeneratingVideos}
-                className="flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-bold shadow-xl shadow-purple-600/20 transition-all hover:scale-105"
-              >
-                <Sparkles className={`w-4 h-4 ${isBatchGeneratingVideos ? 'animate-spin' : ''}`} />
-                <span>
-                  {isBatchGeneratingVideos
-                    ? 'Synthesizing with 2 Parallel Workers...'
-                    : allVideosReady
-                    ? 'Re-render All 10 Videos'
-                    : 'Generate All 10 Veo Videos (2 Workers)'}
-                </span>
-              </button>
+              {/* Video Generation Quality Mode Toggle & Action */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center p-1 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedVideoQuality('FAST_720P')}
+                    disabled={isBatchGeneratingVideos}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                      selectedVideoQuality === 'FAST_720P'
+                        ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    <span>⚡ Fast (720p Preview)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedVideoQuality('FULL_4K')}
+                    disabled={isBatchGeneratingVideos}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                      selectedVideoQuality === 'FULL_4K'
+                        ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>🌟 Full (4K UHD Master)</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleGenerateAllVideos(selectedVideoQuality)}
+                  disabled={isBatchGeneratingVideos}
+                  className={`flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-white text-xs font-bold shadow-xl transition-all hover:scale-105 disabled:opacity-50 ${
+                    selectedVideoQuality === 'FULL_4K'
+                      ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/25'
+                      : 'bg-purple-600 hover:bg-purple-700 shadow-purple-600/25'
+                  }`}
+                >
+                  <Sparkles className={`w-4 h-4 ${isBatchGeneratingVideos ? 'animate-spin' : ''}`} />
+                  <span>
+                    {isBatchGeneratingVideos
+                      ? `Synthesizing ${selectedVideoQuality === 'FULL_4K' ? '4K UHD' : '720p'} (2 Workers)...`
+                      : allVideosReady
+                      ? `Re-render All 10 (${selectedVideoQuality === 'FULL_4K' ? '4K Master' : '720p Fast'})`
+                      : `Generate All 10 (${selectedVideoQuality === 'FULL_4K' ? '4K Master' : '720p Fast'}) (2 Workers)`}
+                  </span>
+                </button>
+              </div>
             </div>
 
             {/* Parallel Worker Live Animation Dashboard */}

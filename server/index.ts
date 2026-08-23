@@ -756,16 +756,21 @@ app.post('/api/refine-image', requireCloudspaceDomain, upload.fields([{ name: 'b
   }
 });
 
-// 4. Generate Veo 3 Video (4.0s Image-to-Video Synthesis with Dynamic Push-in Camera Motion)
+// 4. Generate Veo 3 Video (Fast 720p Preview or Full 4K Broadcast Master)
 app.post('/api/generate-video', requireCloudspaceDomain, async (req, res) => {
   try {
-    const { slotIndex, imageUri } = req.body;
+    const { slotIndex, imageUri, qualityMode = 'FAST_720P' } = req.body;
     if (!imageUri) {
       return res.status(400).json({ error: 'imageUri is required' });
     }
 
     const inputImagePath = path.join(WORKSPACE_ROOT, imageUri.replace(/^\//, ''));
-    const videoFilename = `slot_${slotIndex}_raw_${Date.now()}.mp4`;
+    const is4K = qualityMode === 'FULL_4K';
+    const resolution = is4K ? '3840x2160' : '1280x720';
+    const preset = is4K ? 'medium' : 'ultrafast';
+    const crf = is4K ? '15' : '24';
+    const tag = is4K ? 'full_4k' : 'fast_720p';
+    const videoFilename = `slot_${slotIndex}_${tag}_${Date.now()}.mp4`;
     const rawVideoPath = path.join(OUTPUT_DIR, videoFilename);
 
     if (!fs.existsSync(inputImagePath)) {
@@ -777,23 +782,24 @@ app.post('/api/generate-video', requireCloudspaceDomain, async (req, res) => {
       '-y',
       '-loop', '1',
       '-i', inputImagePath,
-      '-vf', "zoompan=z='min(zoom+0.0015,1.25)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=240:s=1920x1080:fps=60",
+      '-vf', `zoompan=z='min(zoom+0.0015,1.25)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=240:s=${resolution}:fps=60`,
       '-t', '4.0',
       '-c:v', 'libx264',
-      '-preset', 'ultrafast',
-      '-crf', '18',
+      '-preset', preset,
+      '-crf', crf,
       '-pix_fmt', 'yuv420p',
       '-r', '60',
       '-an',
       rawVideoPath,
     ];
 
-    addLog('INFO', 'FFMPEG', `Synthesizing 4.0s Veo 3 Video for Shot #${slotIndex}...`);
+    addLog('INFO', 'FFMPEG', `Synthesizing 4.0s Veo 3 Video for Shot #${slotIndex} (${is4K ? '🌟 Full 4K UHD' : '⚡ Fast 720p Preview'})...`);
     await execFFmpeg(ffmpegArgs);
 
     return res.json({
       success: true,
       rawVideoUri: `/output/${videoFilename}`,
+      qualityMode,
     });
   } catch (err: any) {
     addLog('ERROR', 'FFMPEG', 'Error generating video: ' + err.message);
@@ -804,10 +810,11 @@ app.post('/api/generate-video', requireCloudspaceDomain, async (req, res) => {
 // 5. Process Temporal Alignment (FFmpeg Speed/Trim for Veo 3 Video)
 app.post('/api/process-temporal-video', requireCloudspaceDomain, async (req, res) => {
   try {
-    const { slotIndex, rawVideoUri, temporalConfig } = req.body as {
+    const { slotIndex, rawVideoUri, temporalConfig, qualityMode = 'FAST_720P' } = req.body as {
       slotIndex: number;
       rawVideoUri: string;
       temporalConfig: SlotTemporalConfig;
+      qualityMode?: 'FAST_720P' | 'FULL_4K';
     };
 
     if (!rawVideoUri || !temporalConfig) {
@@ -815,16 +822,19 @@ app.post('/api/process-temporal-video', requireCloudspaceDomain, async (req, res
     }
 
     const inputVideoPath = path.join(WORKSPACE_ROOT, rawVideoUri.replace(/^\//, ''));
-    const outputFilename = `slot_${slotIndex}_processed_${Date.now()}.mp4`;
+    const is4K = qualityMode === 'FULL_4K';
+    const tag = is4K ? 'full_4k' : 'fast_720p';
+    const outputFilename = `slot_${slotIndex}_processed_${tag}_${Date.now()}.mp4`;
     const processedVideoPath = path.join(OUTPUT_DIR, outputFilename);
 
-    const ffmpegArgs = generateSingleSlotFFmpegArgs(slotIndex, inputVideoPath, processedVideoPath, temporalConfig);
-    addLog('INFO', 'FFMPEG', `Processing temporal alignment for Shot #${slotIndex} (mode: ${temporalConfig.mode}, target: ${temporalConfig.targetDurationSeconds}s)...`);
+    const ffmpegArgs = generateSingleSlotFFmpegArgs(slotIndex, inputVideoPath, processedVideoPath, temporalConfig, qualityMode);
+    addLog('INFO', 'FFMPEG', `Processing temporal alignment for Shot #${slotIndex} (mode: ${temporalConfig.mode}, target: ${temporalConfig.targetDurationSeconds}s, tier: ${qualityMode})...`);
     await execFFmpeg(ffmpegArgs);
 
     return res.json({
       success: true,
       processedVideoUri: `/output/${outputFilename}`,
+      qualityMode,
     });
   } catch (err: any) {
     addLog('ERROR', 'FFMPEG', 'Error in temporal video processing: ' + err.message);
@@ -835,13 +845,14 @@ app.post('/api/process-temporal-video', requireCloudspaceDomain, async (req, res
 // 6. Master Export (Concat 10 slots + 30s Audio Track Mix)
 app.post('/api/export-master', requireCloudspaceDomain, async (req, res) => {
   try {
-    const { slotsConfig } = req.body as {
+    const { slotsConfig, qualityMode = 'FAST_720P' } = req.body as {
       slotsConfig: {
         index: number;
         processedVideoUri: string | null;
         rawVideoUri: string | null;
         temporalConfig: SlotTemporalConfig;
       }[];
+      qualityMode?: 'FAST_720P' | 'FULL_4K';
     };
 
     if (!slotsConfig || slotsConfig.length !== 10) {
@@ -857,7 +868,8 @@ app.post('/api/export-master', requireCloudspaceDomain, async (req, res) => {
       return path.join(WORKSPACE_ROOT, targetUri.replace(/^\//, ''));
     });
 
-    const outputFilename = `master_countdown_30s_${Date.now()}.mp4`;
+    const is4K = qualityMode === 'FULL_4K';
+    const outputFilename = `master_countdown_${is4K ? '4k' : '720p'}_30s_${Date.now()}.mp4`;
     const masterOutputPath = path.join(OUTPUT_DIR, outputFilename);
 
     const offsetResult = calculateTimelineOffsets(sortedSlots.map((s) => ({ index: s.index, temporalConfig: s.temporalConfig })));
@@ -867,17 +879,19 @@ app.post('/api/export-master', requireCloudspaceDomain, async (req, res) => {
       inputVideoPaths,
       AUDIO_TRACK_PATH,
       totalVideoDuration,
-      masterOutputPath
+      masterOutputPath,
+      qualityMode
     );
 
-    addLog('INFO', 'FFMPEG', `Exporting 30.0s Master Countdown Video (${totalVideoDuration}s total duration)...`);
+    addLog('INFO', 'FFMPEG', `Exporting 30.0s Master Countdown Video (${totalVideoDuration}s total duration, quality: ${qualityMode})...`);
     await execFFmpeg(ffmpegArgs);
 
-    addLog('SUCCESS', 'FFMPEG', `Master 30.0s Countdown Video exported successfully: ${outputFilename}`);
+    addLog('SUCCESS', 'FFMPEG', `Master 30.0s Countdown Video (${qualityMode}) exported successfully: ${outputFilename}`);
     return res.json({
       success: true,
       masterVideoUri: `/output/${outputFilename}`,
       totalDuration: totalVideoDuration,
+      qualityMode,
     });
   } catch (err: any) {
     addLog('ERROR', 'FFMPEG', 'Error exporting master video: ' + err.message);

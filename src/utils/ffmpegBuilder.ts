@@ -1,4 +1,4 @@
-import { SlotTemporalConfig } from '../types';
+import { SlotTemporalConfig, VideoQualityMode } from '../types';
 import { computeTemporalBounds } from './temporalMath';
 
 export interface SingleSlotFFmpegArgs {
@@ -12,16 +12,20 @@ export function generateSingleSlotFFmpegArgs(
   slotIndex: number,
   inputPath: string,
   outputPath: string,
-  config: SlotTemporalConfig
+  config: SlotTemporalConfig,
+  qualityMode: VideoQualityMode = 'FAST_720P'
 ): string[] {
   const bounds = computeTemporalBounds(config.mode, config.targetDurationSeconds);
+  const resolution = qualityMode === 'FULL_4K' ? '3840:2160' : '1280:720';
+  const preset = qualityMode === 'FULL_4K' ? 'medium' : 'ultrafast';
+  const crf = qualityMode === 'FULL_4K' ? '15' : '24';
 
   const args: string[] = ['-y', '-i', inputPath];
 
   if (config.mode === 'SPEED_UP') {
     args.push(
       '-vf',
-      `setpts=${bounds.ptsFactor}*PTS,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p`,
+      `setpts=${bounds.ptsFactor}*PTS,scale=${resolution}:force_original_aspect_ratio=decrease,pad=${resolution}:(ow-iw)/2:(oh-ih)/2,fps=60,format=yuv420p`,
       '-t',
       bounds.duration.toFixed(3)
     );
@@ -32,7 +36,7 @@ export function generateSingleSlotFFmpegArgs(
       '-t',
       bounds.duration.toFixed(3),
       '-vf',
-      'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p'
+      `scale=${resolution}:force_original_aspect_ratio=decrease,pad=${resolution}:(ow-iw)/2:(oh-ih)/2,fps=60,format=yuv420p`
     );
   } else if (config.mode === 'TRUNCATE_BACK') {
     args.push(
@@ -41,19 +45,19 @@ export function generateSingleSlotFFmpegArgs(
       '-t',
       bounds.duration.toFixed(3),
       '-vf',
-      'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p'
+      `scale=${resolution}:force_original_aspect_ratio=decrease,pad=${resolution}:(ow-iw)/2:(oh-ih)/2,fps=60,format=yuv420p`
     );
   } else {
     // PASSTHROUGH
     args.push(
       '-vf',
-      'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p',
+      `scale=${resolution}:force_original_aspect_ratio=decrease,pad=${resolution}:(ow-iw)/2:(oh-ih)/2,fps=60,format=yuv420p`,
       '-t',
       '4.000'
     );
   }
 
-  args.push('-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-an', outputPath);
+  args.push('-c:v', 'libx264', '-preset', preset, '-crf', crf, '-an', outputPath);
   return args;
 }
 
@@ -61,7 +65,8 @@ export function generateMasterConcatFFmpegArgs(
   processedSlotPaths: string[], // In chronological order (Slot 10 down to 1)
   audioTrackPath: string,
   totalDuration: number,
-  outputMasterPath: string
+  outputMasterPath: string,
+  qualityMode: VideoQualityMode = 'FAST_720P'
 ): string[] {
   const args: string[] = ['-y'];
 
@@ -93,6 +98,10 @@ export function generateMasterConcatFFmpegArgs(
     );
   }
 
+  const preset = qualityMode === 'FULL_4K' ? 'medium' : 'ultrafast';
+  const crf = qualityMode === 'FULL_4K' ? '15' : '23';
+  const audioBitrate = qualityMode === 'FULL_4K' ? '320k' : '192k';
+
   args.push(
     '-filter_complex',
     filterComplexParts.join(';'),
@@ -103,13 +112,13 @@ export function generateMasterConcatFFmpegArgs(
     '-c:v',
     'libx264',
     '-preset',
-    'medium',
+    preset,
     '-crf',
-    '18',
+    crf,
     '-c:a',
     'aac',
     '-b:a',
-    '192k',
+    audioBitrate,
     '-shortest',
     outputMasterPath
   );

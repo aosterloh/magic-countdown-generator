@@ -6,22 +6,41 @@ import {
 import { SlotTemporalConfig } from '../src/types';
 
 describe('FFmpeg Command Builder (DEF-01 & DEF-04)', () => {
-  it('generates SPEED_UP filter command with setpts factor and 30fps normalization', () => {
+  it('generates SPEED_UP filter command with setpts factor and Fast 720p resolution', () => {
     const config: SlotTemporalConfig = {
       mode: 'SPEED_UP',
       targetDurationSeconds: 3.0,
       trimStartSeconds: 0,
       trimEndSeconds: 4.0,
     };
-    const args = generateSingleSlotFFmpegArgs(10, 'input.mp4', 'output.mp4', config);
+    const args = generateSingleSlotFFmpegArgs(10, 'input.mp4', 'output.mp4', config, 'FAST_720P');
 
     expect(args).toContain('-vf');
     const vfIndex = args.indexOf('-vf');
     expect(args[vfIndex + 1]).toContain('setpts=0.75*PTS');
-    expect(args[vfIndex + 1]).toContain('scale=1920:1080');
+    expect(args[vfIndex + 1]).toContain('scale=1280:720');
     expect(args).toContain('-t');
     const tIndex = args.indexOf('-t');
     expect(args[tIndex + 1]).toBe('3.000');
+    expect(args).toContain('-preset');
+    expect(args).toContain('ultrafast');
+  });
+
+  it('generates FULL_4K filter with 3840x2160 UHD resolution and high-fidelity CRF', () => {
+    const config: SlotTemporalConfig = {
+      mode: 'SPEED_UP',
+      targetDurationSeconds: 3.0,
+      trimStartSeconds: 0,
+      trimEndSeconds: 4.0,
+    };
+    const args = generateSingleSlotFFmpegArgs(10, 'input.mp4', 'output.mp4', config, 'FULL_4K');
+
+    expect(args).toContain('-vf');
+    const vfIndex = args.indexOf('-vf');
+    expect(args[vfIndex + 1]).toContain('scale=3840:2160');
+    expect(args).toContain('-crf');
+    const crfIndex = args.indexOf('-crf');
+    expect(args[crfIndex + 1]).toBe('15');
   });
 
   it('generates TRUNCATE_FRONT filter with start offset and exact duration', () => {
@@ -31,7 +50,7 @@ describe('FFmpeg Command Builder (DEF-01 & DEF-04)', () => {
       trimStartSeconds: 1.5,
       trimEndSeconds: 4.0,
     };
-    const args = generateSingleSlotFFmpegArgs(9, 'input.mp4', 'output.mp4', config);
+    const args = generateSingleSlotFFmpegArgs(9, 'input.mp4', 'output.mp4', config, 'FAST_720P');
 
     expect(args).toContain('-ss');
     const ssIndex = args.indexOf('-ss');
