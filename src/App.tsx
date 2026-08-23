@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Wand2,
   Sparkles,
@@ -22,7 +22,7 @@ import { WaveformTimeline } from './components/WaveformTimeline';
 import { RefineModal } from './components/RefineModal';
 import { MasterExportModal } from './components/MasterExportModal';
 import { GoogleAuthGate } from './components/GoogleAuthGate';
-import { CountdownSlot, ImageModelType, AuthMode, SlotTemporalConfig, VideoQualityMode } from './types';
+import { CountdownSlot, ImageModelType, AuthMode, SlotTemporalConfig, VideoQualityMode, JobSummary } from './types';
 import { UNIVERSAL_STYLE_ANCHOR } from './utils/promptBuilder';
 import { calculateTimelineOffsets } from './utils/temporalMath';
 
@@ -48,24 +48,27 @@ export const App: React.FC = () => {
     return saved ? saved === 'dark' : false;
   });
 
+  // Persistent GCS Multi-User Job Management State
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [jobsList, setJobsList] = useState<JobSummary[]>([]);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
+
   // Settings State: Default to Active Project aosterloh-cs-muc
   const [apiKey, setApiKey] = useState<string>(() => {
     return localStorage.getItem('gemini_api_key') || '';
   });
   const [authMode, setAuthMode] = useState<AuthMode>('ADC');
   const [selectedModel, setSelectedModel] = useState<ImageModelType>('gemini-3.1-flash-image');
+  const [selectedVideoQuality, setSelectedVideoQuality] = useState<VideoQualityMode>('FAST_720P');
 
   // Multi-step Workflow State (1 to 5)
-  // Stage 1: Brand & Theme Input Form
-  // Stage 2: Review & Edit 10 Diegetic Prompts (PromptReviewList)
-  // Stage 3: Generate & Review 10 Diegetic Images (SlotCards with 2 workers)
-  // Stage 4: Veo 3 Video & Waveform Timeline
-  // Stage 5: Master Export & Player
   const [currentStage, setCurrentStage] = useState<number>(1);
   const [brandName, setBrandName] = useState<string>('Lufthansa Group');
   const [themeContext, setThemeContext] = useState<string>(
     'Aviation excellence across aircraft hangar, flight crew preparations, wet runway operations, golden hour takeoff, first-class passengers, and turbofan engine maintenance'
   );
+  const [styleModifiers, setStyleModifiers] = useState<string>('');
 
   // Countdown Slots (10 down to 1)
   const [slots, setSlots] = useState<CountdownSlot[]>(() =>
@@ -110,6 +113,205 @@ export const App: React.FC = () => {
   const [isExportingMaster, setIsExportingMaster] = useState(false);
   const [masterVideoUri, setMasterVideoUri] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+
+  // GCS Job Management Handlers
+  const fetchJobsList = async () => {
+    setIsLoadingJobs(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/jobs`);
+      const data = await res.json();
+      if (data.success && data.jobs) {
+        setJobsList(data.jobs);
+        return data.jobs as JobSummary[];
+      }
+    } catch (e) {
+      console.warn('Failed to fetch jobs from GCS:', e);
+    } finally {
+      setIsLoadingJobs(false);
+    }
+    return [];
+  };
+
+  const loadJob = async (jobIdToLoad: string) => {
+    setIsLoadingJobs(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/jobs/${jobIdToLoad}`);
+      const data = await res.json();
+      if (data.success && data.job) {
+        const j = data.job;
+        setCurrentJobId(j.jobId);
+        setBrandName(j.customerName || 'Lufthansa Group');
+        setThemeContext(j.creativeTheme || '');
+        if (j.styleModifiers !== undefined) setStyleModifiers(j.styleModifiers);
+        if (j.selectedModel) setSelectedModel(j.selectedModel);
+        if (j.selectedVideoQuality) setSelectedVideoQuality(j.selectedVideoQuality);
+        if (j.currentStage) setCurrentStage(j.currentStage);
+        if (j.slots && j.slots.length > 0) setSlots(j.slots);
+        if (j.masterVideoUri) setMasterVideoUri(j.masterVideoUri);
+
+        // Update URL query parameter
+        const url = new URL(window.location.href);
+        url.searchParams.set('job', j.jobId);
+        window.history.replaceState({}, '', url.toString());
+        return true;
+      }
+    } catch (e) {
+      console.error(`Failed to load job ${jobIdToLoad}:`, e);
+    } finally {
+      setIsLoadingJobs(false);
+    }
+    return false;
+  };
+
+  const createAndSelectNewJob = async (
+    customer: string = 'Lufthansa Group',
+    theme: string = 'Aviation Countdown'
+  ) => {
+    setIsLoadingJobs(true);
+    try {
+      const initialSlots: CountdownSlot[] = Array.from({ length: 10 }, (_, i) => {
+        const idx = 10 - i;
+        return {
+          index: idx,
+          diegeticNumber: idx,
+          sceneConcept: `Diegetic scene for #${idx}`,
+          imagePrompt: '',
+          isPromptApproved: true,
+          isPromptRecreating: false,
+          currentImageUri: null,
+          historyImageUri: null,
+          isImageAccepted: false,
+          isImageLoading: false,
+          imageError: null,
+          rawVideoUri: null,
+          isVideoLoading: false,
+          videoError: null,
+          temporalConfig: {
+            mode: 'PASSTHROUGH',
+            targetDurationSeconds: 3.0,
+            trimStartSeconds: 0.0,
+            trimEndSeconds: 3.0,
+          },
+          processedVideoUri: null,
+        };
+      });
+
+      const res = await fetch(`${API_BASE}/api/jobs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: customer,
+          creativeTheme: theme,
+          selectedModel,
+          selectedVideoQuality,
+          currentStage: 1,
+          slots: initialSlots,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.job) {
+        setCurrentJobId(data.job.jobId);
+        setBrandName(data.job.customerName);
+        setThemeContext(data.job.creativeTheme);
+        setCurrentStage(1);
+        setSlots(initialSlots);
+        setMasterVideoUri(null);
+
+        // Update URL query parameter
+        const url = new URL(window.location.href);
+        url.searchParams.set('job', data.job.jobId);
+        window.history.replaceState({}, '', url.toString());
+
+        await fetchJobsList();
+        return data.job;
+      }
+    } catch (e) {
+      console.error('Failed to create new job:', e);
+    } finally {
+      setIsLoadingJobs(false);
+    }
+  };
+
+  // Initial Load: URL Deep Linking or Most Recent Job
+  useEffect(() => {
+    const initAppJob = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlJobId = urlParams.get('job');
+      const jobs = await fetchJobsList();
+
+      if (urlJobId) {
+        const loaded = await loadJob(urlJobId);
+        if (loaded) return;
+      }
+
+      if (jobs && jobs.length > 0) {
+        await loadJob(jobs[0].jobId);
+      } else {
+        await createAndSelectNewJob('Lufthansa Group', 'Aviation Countdown');
+      }
+    };
+
+    initAppJob();
+  }, []);
+
+  // Continuous Debounced Auto-Save to GCS
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (!currentJobId) return;
+
+    setSaveStatus('saving');
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/jobs/${currentJobId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerName: brandName,
+            creativeTheme: themeContext,
+            styleModifiers,
+            selectedModel,
+            selectedVideoQuality,
+            currentStage,
+            slots,
+            masterVideoUri,
+          }),
+        });
+
+        if (res.ok) {
+          setSaveStatus('saved');
+        } else {
+          setSaveStatus('error');
+        }
+      } catch (e) {
+        setSaveStatus('error');
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [
+    currentJobId,
+    brandName,
+    themeContext,
+    styleModifiers,
+    selectedModel,
+    selectedVideoQuality,
+    currentStage,
+    slots,
+    masterVideoUri,
+  ]);
+
+  const handleSelectJob = (jobId: string) => {
+    loadJob(jobId);
+  };
+
+  const handleCreateNewJob = () => {
+    createAndSelectNewJob('Lufthansa Group', 'Aviation Countdown');
+  };
 
   // Sync theme with document element
   useEffect(() => {
@@ -421,9 +623,6 @@ export const App: React.FC = () => {
     }
   };
 
-  // Video Quality Mode State (Fast 720p preview vs Full 4K broadcast master)
-  const [selectedVideoQuality, setSelectedVideoQuality] = useState<VideoQualityMode>('FAST_720P');
-
   // Active Parallel Video Workers State (tracks which 2 slots are actively being synthesized)
   const [activeVideoSlots, setActiveVideoSlots] = useState<{ workerId: number; slotIndex: number; concept: string }[]>([]);
   const [isBatchGeneratingVideos, setIsBatchGeneratingVideos] = useState(false);
@@ -582,6 +781,12 @@ export const App: React.FC = () => {
         onToggleTheme={handleToggleTheme}
         authUser={authUser}
         onSignOut={handleSignOut}
+        currentJobId={currentJobId}
+        jobs={jobsList}
+        isLoadingJobs={isLoadingJobs}
+        saveStatus={saveStatus}
+        onSelectJob={handleSelectJob}
+        onCreateNewJob={handleCreateNewJob}
       />
 
       {/* Main Content Area */}

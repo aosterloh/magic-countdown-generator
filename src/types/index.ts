@@ -63,3 +63,31 @@ export interface ProjectConfig {
   gcpRegion: string;
   apiKey?: string;
 }
+
+export interface JobSummary {
+  jobId: string;
+  customerName: string;
+  creativeTheme: string;
+  currentStage: number;
+  totalSlots: number;
+  readyImagesCount: number;
+  readyVideosCount: number;
+  hasMasterVideo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CountdownJobState {
+  jobId: string;
+  customerName: string;
+  creativeTheme: string;
+  styleModifiers?: string;
+  selectedModel?: ImageModelType;
+  selectedVideoQuality?: VideoQualityMode;
+  currentStage: number;
+  slots: CountdownSlot[];
+  masterVideoUri?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+

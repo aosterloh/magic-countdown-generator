@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Key, Activity, Sun, Moon, Sparkles, ChevronDown, ExternalLink, CheckCircle2, X, Terminal, RefreshCw, Image as ImageIcon, ShieldCheck } from 'lucide-react';
-import { ImageModelType, AuthMode } from '../types';
+import { ImageModelType, AuthMode, JobSummary } from '../types';
 import { getMediaUrl } from '../utils/media';
+import { JobSelectorDropdown } from './JobSelectorDropdown';
 
 interface HeaderProps {
   apiKey: string;
@@ -15,6 +16,12 @@ interface HeaderProps {
   onToggleTheme: () => void;
   authUser?: { email: string; name: string } | null;
   onSignOut?: () => void;
+  currentJobId: string | null;
+  jobs: JobSummary[];
+  isLoadingJobs: boolean;
+  saveStatus: 'saved' | 'saving' | 'error';
+  onSelectJob: (jobId: string) => void;
+  onCreateNewJob: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -28,6 +35,12 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleTheme,
   authUser,
   onSignOut,
+  currentJobId,
+  jobs,
+  isLoadingJobs,
+  saveStatus,
+  onSelectJob,
+  onCreateNewJob,
 }) => {
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [showTestModal, setShowTestModal] = useState(false);
@@ -149,6 +162,16 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Multi-User GCS Job Switcher Dropdown */}
+        <JobSelectorDropdown
+          currentJobId={currentJobId}
+          jobs={jobs}
+          isLoading={isLoadingJobs}
+          saveStatus={saveStatus}
+          onSelectJob={onSelectJob}
+          onCreateNewJob={onCreateNewJob}
+        />
+
         {/* Light / Dark Mode Toggle Button */}
         <button
           type="button"

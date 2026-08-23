@@ -15,6 +15,15 @@ import { generateSingleSlotFFmpegArgs, generateMasterConcatFFmpegArgs } from '..
 import { calculateTimelineOffsets } from '../src/utils/temporalMath';
 import { SlotTemporalConfig } from '../src/types';
 import { renderDiegeticVisualFrame } from './renderDiegeticFrame';
+import {
+  generateJobId,
+  saveJobStateToGcs,
+  loadJobStateFromGcs,
+  listAllJobsFromGcs,
+  uploadAssetToGcs,
+  getAssetFile,
+  StoredJobState,
+} from './gcsStorage';
 
 dotenv.config();
 
@@ -270,6 +279,122 @@ app.get('/api/adc-status', async (_req, res) => {
       hasToken: true,
       domains: ALLOWED_DOMAINS,
     });
+  }
+});
+
+// -------------------------------------------------------------
+// Persistent Multi-User Job Management Endpoints (Google Cloud Storage)
+// -------------------------------------------------------------
+
+// List all jobs
+app.get('/api/jobs', requireCloudspaceDomain, async (req, res) => {
+  try {
+    const jobs = await listAllJobsFromGcs();
+    res.json({ success: true, jobs });
+  } catch (err: any) {
+    addLog('ERROR', 'SYSTEM', `Error listing jobs from GCS: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create a new job
+app.post('/api/jobs', requireCloudspaceDomain, async (req, res) => {
+  try {
+    const {
+      customerName = 'Lufthansa Group',
+      creativeTheme = 'Aviation Countdown',
+      styleModifiers = '',
+      selectedModel = 'gemini-3.1-flash-image',
+      selectedVideoQuality = 'FAST_720P',
+      currentStage = 1,
+      slots = [],
+      masterVideoUri = null,
+    } = req.body;
+
+    const jobId = generateJobId(customerName);
+    const now = new Date().toISOString();
+
+    const jobState: StoredJobState = {
+      jobId,
+      customerName,
+      creativeTheme,
+      styleModifiers,
+      selectedModel,
+      selectedVideoQuality,
+      currentStage,
+      slots,
+      masterVideoUri: masterVideoUri || undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await saveJobStateToGcs(jobState);
+    addLog('SUCCESS', 'SYSTEM', `Created new persistent GCS project: ${jobId}`);
+
+    res.json({ success: true, job: jobState });
+  } catch (err: any) {
+    addLog('ERROR', 'SYSTEM', `Error creating job in GCS: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get a specific job by ID
+app.get('/api/jobs/:jobId', requireCloudspaceDomain, async (req, res) => {
+  try {
+    const jobId = String(req.params.jobId);
+    const job = await loadJobStateFromGcs(jobId);
+    if (!job) {
+      return res.status(404).json({ error: `Job ${jobId} not found in GCS` });
+    }
+    res.json({ success: true, job });
+  } catch (err: any) {
+    addLog('ERROR', 'SYSTEM', `Error fetching job ${req.params.jobId}: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update / Auto-save a job
+app.put('/api/jobs/:jobId', requireCloudspaceDomain, async (req, res) => {
+  try {
+    const jobId = String(req.params.jobId);
+    const existing = (await loadJobStateFromGcs(jobId)) || ({} as Partial<StoredJobState>);
+
+    const updatedState: StoredJobState = {
+      ...existing,
+      ...req.body,
+      jobId,
+      updatedAt: new Date().toISOString(),
+      createdAt: existing.createdAt || new Date().toISOString(),
+    };
+
+    await saveJobStateToGcs(updatedState);
+    res.json({ success: true, job: updatedState });
+  } catch (err: any) {
+    addLog('ERROR', 'SYSTEM', `Error auto-saving job ${req.params.jobId}: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Stream or download a GCS media asset
+app.get('/api/jobs/:jobId/assets/:subfolder/:filename', async (req, res) => {
+  try {
+    const jobId = String(req.params.jobId);
+    const subfolder = String(req.params.subfolder);
+    const filename = String(req.params.filename);
+    const file = getAssetFile(jobId, subfolder, filename);
+
+    const [exists] = await file.exists();
+    if (!exists) {
+      return res.status(404).json({ error: 'Asset not found in GCS' });
+    }
+
+    const [metadata] = await file.getMetadata();
+    res.setHeader('Content-Type', (metadata.contentType as string) || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+
+    file.createReadStream().pipe(res);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 
