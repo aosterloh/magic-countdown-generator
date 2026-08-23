@@ -347,11 +347,12 @@ export const App: React.FC = () => {
     }
   };
 
-  // Accept Shot
-  const handleAcceptShot = (slotIndex: number) => {
+  // Accept Shot & Auto-Generate Veo 3 Video Immediately
+  const handleAcceptShot = async (slotIndex: number) => {
     setSlots((prev) =>
-      prev.map((s) => (s.index === slotIndex ? { ...s, isImageAccepted: !s.isImageAccepted } : s))
+      prev.map((s) => (s.index === slotIndex ? { ...s, isImageAccepted: true } : s))
     );
+    await handleGenerateVideoForSlot(slotIndex);
   };
 
   // Redo Shot

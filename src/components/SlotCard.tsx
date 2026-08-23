@@ -86,22 +86,43 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               {slot.sceneConcept || `Diegetic Shot #${slot.index}`}
             </h3>
           </div>
-        </div>
-
-        {/* Quick Accept / Status Button */}
+        </div>        {/* Quick Accept / Auto-Video Button */}
         <div className="flex items-center gap-2.5 self-end sm:self-center">
           <button
             type="button"
             onClick={() => onAccept(slot.index)}
-            disabled={!slot.currentImageUri || slot.isImageLoading}
+            disabled={!slot.currentImageUri || slot.isImageLoading || slot.isVideoLoading}
             className={`flex items-center gap-2 py-2 px-5 rounded-2xl text-xs font-bold transition-all shadow-sm ${
-              slot.isImageAccepted
+              slot.rawVideoUri
                 ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#34A853] border border-emerald-300 dark:border-emerald-800'
-                : 'bg-[#34A853] hover:bg-emerald-600 active:scale-98 text-white'
+                : slot.isVideoLoading
+                ? 'bg-purple-600 text-white animate-pulse'
+                : slot.isImageAccepted
+                ? 'bg-emerald-600 text-white'
+                : 'bg-[#34A853] hover:bg-emerald-600 active:scale-98 text-white shadow-emerald-500/20'
             } disabled:opacity-40`}
           >
-            <CheckCircle2 className="w-4 h-4" />
-            <span>{slot.isImageAccepted ? 'Approved (Ready for Veo 3)' : 'Accept Shot'}</span>
+            {slot.isVideoLoading ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Synthesizing Veo 3 Video...</span>
+              </>
+            ) : slot.rawVideoUri ? (
+              <>
+                <CheckCircle2 className="w-4 h-4 text-[#34A853]" />
+                <span>Accepted • Veo 3 Ready</span>
+              </>
+            ) : slot.isImageAccepted ? (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Accepted</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Accept Shot</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -120,55 +141,57 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             <div className="flex-1 flex items-center justify-center min-h-[180px]">
               <img
                 src={imageUrl}
-                alt={`Shot ${slot.index} Frame`}
-                className="w-full h-full object-contain rounded-xl max-h-56"
+                alt={`Diegetic shot #${slot.index}`}
+                className="max-h-[220px] w-full object-contain rounded-xl"
               />
             </div>
           </div>
 
-          {/* Right: Veo 3 Video Output (70% Width) with direct HTML5 player */}
-          <div className="lg:col-span-7 aspect-video rounded-2xl bg-black border border-[#4285F4]/40 overflow-hidden relative group shadow-2xl flex items-center justify-center">
-            <video
-              src={videoUrl}
-              autoPlay
-              loop
-              muted
-              playsInline
-              controls
-              className="w-full h-full object-contain bg-black"
-            />
-            <span className="absolute top-3 right-3 px-3 py-1 rounded-xl bg-slate-900/90 backdrop-blur-md text-white border border-blue-500/40 text-xs font-mono flex items-center gap-1.5 shadow-lg pointer-events-none">
-              <Video className="w-3.5 h-3.5 text-[#4285F4]" />
-              <span>Veo 3 Video (4.0s - 70%)</span>
-            </span>
+          {/* Right: Veo 3 Video Player (70% Width) */}
+          <div className="lg:col-span-7 rounded-2xl bg-black border border-purple-500/30 overflow-hidden relative flex flex-col justify-between p-2 shadow-xl">
+            <div className="flex items-center justify-between px-2 py-1 z-10">
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-purple-900/90 text-purple-200 border border-purple-700 flex items-center gap-1">
+                <Video className="w-3 h-3 text-purple-400" />
+                <span>Veo 3 Video (70% Focus)</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => onPlayVideo(slot.rawVideoUri!)}
+                className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-950/60 px-2 py-0.5 rounded-lg border border-purple-800"
+              >
+                <Play className="w-3 h-3 fill-current" />
+                <span>Fullscreen</span>
+              </button>
+            </div>
+            <div className="aspect-video w-full rounded-xl overflow-hidden bg-black flex items-center justify-center">
+              <video
+                src={videoUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                controls
+                className="w-full h-full object-contain"
+              />
+            </div>
           </div>
         </div>
       ) : (
-        /* Full-Width Image Showcase when video has not yet been rendered */
-        <div className="w-full aspect-video rounded-2xl bg-black border border-slate-200 dark:border-slate-800 overflow-hidden relative group shadow-2xl flex items-center justify-center">
-          {slot.isImageLoading ? (
-            <div className="flex flex-col items-center gap-3 text-[#4285F4] p-8 text-center">
-              <RefreshCw className="w-10 h-10 animate-spin text-[#4285F4]" />
-              <div className="space-y-1">
-                <p className="text-sm font-bold text-slate-900 dark:text-white">
-                  Synthesizing Shot #{slot.index} with Gemini Nano Banana...
-                </p>
-                <p className="text-xs text-slate-500">
-                  Generating diegetic number '{slot.diegeticNumber}' embedded into {brandName} machinery.
-                </p>
+        <div className="w-full rounded-2xl bg-black border border-slate-200 dark:border-slate-800 overflow-hidden relative group">
+          <div className="aspect-video w-full flex items-center justify-center bg-slate-950">
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt={`Diegetic shot #${slot.index}`}
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <div className="text-center p-8 space-y-2 text-slate-500">
+                <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#4285F4]" />
+                <p className="text-xs font-mono">Synthesizing Shot #{slot.index} with Gemini Nano Banana...</p>
               </div>
-            </div>
-          ) : slot.currentImageUri ? (
-            <img
-              src={imageUrl}
-              alt={`Shot ${slot.index} - ${slot.sceneConcept}`}
-              className="w-full h-full object-contain bg-black transition-transform duration-500 group-hover:scale-[1.01]"
-            />
-          ) : (
-            <div className="text-sm text-slate-500 text-center px-4">
-              Pending synthesis
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
@@ -205,7 +228,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
           <button
             type="button"
             onClick={() => onRedo(slot.index)}
-            disabled={slot.isImageLoading}
+            disabled={slot.isImageLoading || slot.isVideoLoading}
             className="flex items-center gap-1.5 py-2.5 px-4 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-colors disabled:opacity-40"
           >
             <RefreshCw className="w-3.5 h-3.5 text-[#4285F4]" />
@@ -215,7 +238,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
           <button
             type="button"
             onClick={() => onOpenRefine(slot)}
-            disabled={!slot.currentImageUri || slot.isImageLoading}
+            disabled={!slot.currentImageUri || slot.isImageLoading || slot.isVideoLoading}
             className="flex items-center gap-1.5 py-2.5 px-4 rounded-2xl bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-950/60 text-[#4285F4] dark:text-blue-300 text-xs font-semibold border border-blue-200 dark:border-blue-800/80 transition-colors disabled:opacity-40"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -233,26 +256,6 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             </button>
           )}
         </div>
-
-        {/* Video Generation Trigger */}
-        <button
-          type="button"
-          onClick={() => onGenerateVideo(slot.index)}
-          disabled={!slot.currentImageUri || slot.isVideoLoading}
-          className="flex items-center gap-2 py-2.5 px-5 rounded-2xl bg-[#4285F4] hover:bg-blue-600 text-white text-xs font-bold shadow-lg shadow-blue-500/20 transition-all disabled:opacity-40"
-        >
-          {slot.isVideoLoading ? (
-            <>
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              <span>Synthesizing Veo 3 Video (No Audio)...</span>
-            </>
-          ) : (
-            <>
-              <Video className="w-3.5 h-3.5" />
-              <span>{slot.rawVideoUri ? 'Re-Generate Veo 3 Video' : 'Generate Veo 3 Video (4.0s)'}</span>
-            </>
-          )}
-        </button>
       </div>
     </div>
   );
