@@ -453,7 +453,10 @@ export const App: React.FC = () => {
         body: JSON.stringify({
           slotIndex,
           imageUri: targetSlot.currentImageUri,
+          videoPrompt: targetSlot.videoPrompt,
           qualityMode,
+          apiKey,
+          authMode,
         }),
       });
       const data = await res.json();

@@ -33,7 +33,7 @@ interface LogEntry {
   id: string;
   timestamp: string;
   level: 'INFO' | 'SUCCESS' | 'WARN' | 'ERROR';
-  category: 'GEMINI_AI' | 'ADC_AUTH' | 'FFMPEG' | 'SYSTEM';
+  category: 'GEMINI_AI' | 'VEO_AI' | 'ADC_AUTH' | 'FFMPEG' | 'SYSTEM';
   message: string;
   details?: any;
 }
@@ -756,10 +756,195 @@ app.post('/api/refine-image', requireCloudspaceDomain, upload.fields([{ name: 'b
   }
 });
 
-// 4. Generate Veo 3 Video (Fast 720p Preview or Full 4K Broadcast Master)
+// Veo Image-to-Video Engine (Google AI Studio & Vertex AI Long-Running Operations)
+async function synthesizeVeoVideo(
+  imageBuffer: Buffer,
+  videoPrompt: string,
+  slotIndex: number,
+  qualityMode: 'FAST_720P' | 'FULL_4K',
+  apiKey?: string
+): Promise<{ success: boolean; videoBuffer?: Buffer; modelUsed?: string; error?: string }> {
+  const is4K = qualityMode === 'FULL_4K';
+  const key = apiKey || process.env.GEMINI_API_KEY;
+  const creds = await getAdcCredentials();
+  const gcpProject = process.env.GCP_PROJECT || 'aosterloh-cs-muc';
+  const gcpRegion = process.env.GCP_REGION || 'us-central1';
+  const base64Image = imageBuffer.toString('base64');
+
+  addLog('INFO', 'VEO_AI', `Initiating Veo Image-to-Video synthesis for Shot #${slotIndex} (${is4K ? '🌟 Veo 3.1 Master' : '⚡ Veo 3.1 Fast'})...`);
+
+  // Candidate Models for Veo image2video
+  const candidateModels = is4K
+    ? ['veo-3.1-generate-preview', 'veo-2.0-generate-001', 'veo-002']
+    : ['veo-3.1-fast-generate-preview', 'veo-3.1-generate-preview', 'veo-2.0-generate-001'];
+
+  // Method 1: Google AI Studio Gemini API (API Key)
+  if (key) {
+    for (const model of candidateModels) {
+      try {
+        addLog('INFO', 'VEO_AI', `Attempting Google AI Studio Veo API (${model})...`);
+        const initRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:predictLongRunning?key=${key}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              instances: [
+                {
+                  prompt: videoPrompt,
+                  image: {
+                    bytesBase64Encoded: base64Image,
+                    mimeType: 'image/png',
+                  },
+                },
+              ],
+              parameters: {
+                sampleCount: 1,
+                aspectRatio: '16:9',
+                durationSeconds: 4,
+                fps: 60,
+                personGeneration: 'allow_adult',
+              },
+            }),
+          }
+        );
+
+        if (initRes.ok) {
+          const initData = await initRes.json();
+          const operationName = initData.name;
+          if (operationName) {
+            addLog('INFO', 'VEO_AI', `Veo operation created: ${operationName}. Polling for completion...`);
+
+            // Poll operation for up to 120 seconds
+            const maxPollAttempts = 24;
+            for (let attempt = 1; attempt <= maxPollAttempts; attempt++) {
+              await new Promise((r) => setTimeout(r, 5000));
+              const pollRes = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${key}`
+              );
+
+              if (pollRes.ok) {
+                const pollData = await pollRes.json();
+                if (pollData.done) {
+                  if (pollData.error) {
+                    throw new Error(pollData.error.message || 'Veo operation returned error');
+                  }
+                  const videoObj =
+                    pollData.response?.generatedVideos?.[0] ||
+                    pollData.response?.generated_videos?.[0];
+
+                  if (videoObj?.video?.videoBytes || videoObj?.video?.bytesBase64Encoded) {
+                    const bytes = videoObj.video.videoBytes || videoObj.video.bytesBase64Encoded;
+                    const videoBuffer = Buffer.from(bytes, 'base64');
+                    addLog('SUCCESS', 'VEO_AI', `Successfully synthesized real Veo video for Shot #${slotIndex} using ${model}!`);
+                    return { success: true, videoBuffer, modelUsed: model };
+                  } else if (videoObj?.video?.uri || videoObj?.uri) {
+                    const downloadUrl = videoObj.video?.uri || videoObj.uri;
+                    const videoDlRes = await fetch(downloadUrl);
+                    if (videoDlRes.ok) {
+                      const videoBuffer = Buffer.from(await videoDlRes.arrayBuffer());
+                      addLog('SUCCESS', 'VEO_AI', `Successfully downloaded synthesized Veo video for Shot #${slotIndex} using ${model}!`);
+                      return { success: true, videoBuffer, modelUsed: model };
+                    }
+                  }
+                } else {
+                  addLog('INFO', 'VEO_AI', `Veo Shot #${slotIndex} rendering in progress (${attempt * 5}s elapsed)...`);
+                }
+              }
+            }
+          }
+        } else {
+          const errText = await initRes.text();
+          addLog('INFO', 'VEO_AI', `Model ${model} API returned HTTP ${initRes.status}: ${errText.slice(0, 120)}`);
+        }
+      } catch (err: any) {
+        addLog('INFO', 'VEO_AI', `Model ${model} attempt failed: ${err.message}`);
+      }
+    }
+  }
+
+  // Method 2: Vertex AI API (ADC Token)
+  if (creds.token) {
+    for (const model of candidateModels) {
+      try {
+        addLog('INFO', 'VEO_AI', `Attempting Vertex AI Veo endpoint for model "${model}" in ${gcpRegion}...`);
+        const vertexUrl = `https://${gcpRegion}-aiplatform.googleapis.com/v1/projects/${gcpProject}/locations/${gcpRegion}/publishers/google/models/${model}:predictLongRunning`;
+        const vertexRes = await fetch(vertexUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${creds.token}`,
+          },
+          body: JSON.stringify({
+            instances: [
+              {
+                prompt: videoPrompt,
+                image: {
+                  bytesBase64Encoded: base64Image,
+                  mimeType: 'image/png',
+                },
+              },
+            ],
+            parameters: {
+              sampleCount: 1,
+              aspectRatio: '16:9',
+              durationSeconds: 4,
+              fps: 60,
+              personGeneration: 'allow_adult',
+            },
+          }),
+        });
+
+        if (vertexRes.ok) {
+          const vertexData = await vertexRes.json();
+          const operationName = vertexData.name;
+          if (operationName) {
+            addLog('INFO', 'VEO_AI', `Vertex Veo operation created: ${operationName}. Polling for completion...`);
+            for (let attempt = 1; attempt <= 24; attempt++) {
+              await new Promise((r) => setTimeout(r, 5000));
+              const pollRes = await fetch(
+                `https://${gcpRegion}-aiplatform.googleapis.com/v1/${operationName}`,
+                {
+                  headers: { Authorization: `Bearer ${creds.token}` },
+                }
+              );
+
+              if (pollRes.ok) {
+                const pollData = await pollRes.json();
+                if (pollData.done) {
+                  if (pollData.error) {
+                    throw new Error(pollData.error.message || 'Vertex Veo operation error');
+                  }
+                  const videoObj =
+                    pollData.response?.generatedVideos?.[0] ||
+                    pollData.response?.generated_videos?.[0];
+
+                  if (videoObj?.video?.videoBytes || videoObj?.video?.bytesBase64Encoded) {
+                    const bytes = videoObj.video.videoBytes || videoObj.video.bytesBase64Encoded;
+                    const videoBuffer = Buffer.from(bytes, 'base64');
+                    addLog('SUCCESS', 'VEO_AI', `Successfully synthesized real Vertex Veo video for Shot #${slotIndex}!`);
+                    return { success: true, videoBuffer, modelUsed: `vertex-${model}` };
+                  }
+                } else {
+                  addLog('INFO', 'VEO_AI', `Vertex Veo Shot #${slotIndex} rendering in progress (${attempt * 5}s elapsed)...`);
+                }
+              }
+            }
+          }
+        }
+      } catch (vertexErr: any) {
+        addLog('INFO', 'VEO_AI', `Vertex Veo attempt error: ${vertexErr.message}`);
+      }
+    }
+  }
+
+  return { success: false, error: 'Veo Image-to-Video models unavailable with current credentials' };
+}
+
+// 4. Generate Veo 3 Video (Image-to-Video AI Synthesis with Motion Fallback)
 app.post('/api/generate-video', requireCloudspaceDomain, async (req, res) => {
   try {
-    const { slotIndex, imageUri, qualityMode = 'FAST_720P' } = req.body;
+    const { slotIndex, imageUri, videoPrompt, apiKey, qualityMode = 'FAST_720P' } = req.body;
     if (!imageUri) {
       return res.status(400).json({ error: 'imageUri is required' });
     }
@@ -770,14 +955,35 @@ app.post('/api/generate-video', requireCloudspaceDomain, async (req, res) => {
     const preset = is4K ? 'medium' : 'ultrafast';
     const crf = is4K ? '15' : '24';
     const tag = is4K ? 'full_4k' : 'fast_720p';
-    const videoFilename = `slot_${slotIndex}_${tag}_${Date.now()}.mp4`;
+    const videoFilename = `slot_${slotIndex}_veo_${tag}_${Date.now()}.mp4`;
     const rawVideoPath = path.join(OUTPUT_DIR, videoFilename);
 
     if (!fs.existsSync(inputImagePath)) {
       return res.status(404).json({ error: 'Input image file does not exist on server' });
     }
 
-    // Dynamic 4.0s 60fps Veo 3 camera push-in zoom with cinematic motion (No Audio / -an for maximum render speed)
+    const imageBuffer = fs.readFileSync(inputImagePath);
+    const promptToUse =
+      videoPrompt ||
+      `Cinematic 60fps camera motion smoothly moving past foreground structures to reveal the diegetic numeral '${slotIndex}'`;
+
+    // 1. Attempt Real Google Veo Image-to-Video Synthesis
+    const veoResult = await synthesizeVeoVideo(imageBuffer, promptToUse, slotIndex, qualityMode, apiKey);
+
+    if (veoResult.success && veoResult.videoBuffer) {
+      fs.writeFileSync(rawVideoPath, veoResult.videoBuffer);
+      addLog('SUCCESS', 'VEO_AI', `Real Veo 3 Video written to ${videoFilename} (${veoResult.modelUsed})`);
+      return res.json({
+        success: true,
+        rawVideoUri: `/output/${videoFilename}`,
+        qualityMode,
+        isRealVeo: true,
+        modelUsed: veoResult.modelUsed,
+      });
+    }
+
+    // 2. High-Performance 60fps Widescreen Motion Fallback
+    addLog('INFO', 'FFMPEG', `Synthesizing 4.0s 60fps Motion Video for Shot #${slotIndex} (${is4K ? '🌟 Full 4K UHD' : '⚡ Fast 720p Preview'})...`);
     const ffmpegArgs = [
       '-y',
       '-loop', '1',
@@ -793,16 +999,17 @@ app.post('/api/generate-video', requireCloudspaceDomain, async (req, res) => {
       rawVideoPath,
     ];
 
-    addLog('INFO', 'FFMPEG', `Synthesizing 4.0s Veo 3 Video for Shot #${slotIndex} (${is4K ? '🌟 Full 4K UHD' : '⚡ Fast 720p Preview'})...`);
     await execFFmpeg(ffmpegArgs);
 
     return res.json({
       success: true,
       rawVideoUri: `/output/${videoFilename}`,
       qualityMode,
+      isRealVeo: false,
+      modelUsed: 'motion-60fps-fallback',
     });
   } catch (err: any) {
-    addLog('ERROR', 'FFMPEG', 'Error generating video: ' + err.message);
+    addLog('ERROR', 'VEO_AI', 'Error generating video: ' + err.message);
     res.status(500).json({ error: err.message });
   }
 });
