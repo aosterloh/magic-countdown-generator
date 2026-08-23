@@ -62,9 +62,9 @@ export const App: React.FC = () => {
   // Stage 4: Veo 3 Video & Waveform Timeline
   // Stage 5: Master Export & Player
   const [currentStage, setCurrentStage] = useState<number>(1);
-  const [brandName, setBrandName] = useState<string>('Porsche Motorsport');
+  const [brandName, setBrandName] = useState<string>('Lufthansa Group');
   const [themeContext, setThemeContext] = useState<string>(
-    'Hyper-modern automotive telemetry laboratory, titanium engine components, illuminated carbon fiber cockpit gauge'
+    'Aviation excellence across aircraft hangar, flight crew preparations, wet runway operations, golden hour takeoff, first-class passengers, and turbofan engine maintenance'
   );
 
   // Countdown Slots (10 down to 1)

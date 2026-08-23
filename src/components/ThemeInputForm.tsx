@@ -11,9 +11,9 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
   onGeneratePrompts,
   isLoading,
 }) => {
-  const [brandName, setBrandName] = useState('Porsche Motorsport');
+  const [brandName, setBrandName] = useState('Lufthansa Group');
   const [themeContext, setThemeContext] = useState(
-    'Hyper-modern automotive telemetry laboratory, titanium engine components, illuminated carbon fiber cockpit gauge'
+    'Aviation excellence across aircraft hangar, flight crew preparations, wet runway operations, golden hour takeoff, first-class passengers, and turbofan engine maintenance'
   );
   const [styleAnchor, setStyleAnchor] = useState(UNIVERSAL_STYLE_ANCHOR);
   const [showAdvanced, setShowAdvanced] = useState(false);

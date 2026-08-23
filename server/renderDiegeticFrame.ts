@@ -12,7 +12,7 @@ interface SceneVisualDef {
 }
 
 export function generateCinematicSceneSvg(slotIndex: number, brandName: string): string {
-  const brand = (brandName || 'Porsche Motorsport').toUpperCase();
+  const brand = (brandName || 'Lufthansa Group').toUpperCase();
 
   switch (slotIndex) {
     case 10:

@@ -345,67 +345,67 @@ Return ONLY a valid JSON array of 10 objects:
       }
     }
 
-    // Procedural Fallback Prompts with Coordinated Reveal Framing
+    // Procedural Fallback Prompts with Coordinated Reveal Framing (Lufthansa Group Aviation Master Plan)
     const concepts = [
       {
         num: 10,
-        concept: `Aerospace turbine throttle intake with foreground carbon fiber guide vanes for ${brandName}`,
-        embed: "laser-etched power gauge marking '10' on the internal rotor",
-        reveal: "Camera pushes past the foreground carbon fiber vanes, dollying deep into the compressor hub to bring the laser-etched numeral '10' into sharp, luminous focus",
+        concept: `Massive Lufthansa Technik maintenance hangar with widebody Boeing 787 and Airbus A350 for ${brandName}`,
+        embed: "laser-etched hangar bay gantry marker 'BAY 10' on the overhead steel truss",
+        reveal: "Camera dollies smoothly past foreground hydraulic maintenance lifts and scaffolding, tilting up to bring the illuminated 'BAY 10' gantry marker into sharp cinematic focus",
       },
       {
         num: 9,
-        concept: `High-precision robotic fabrication cell in ${brandName} laboratory`,
-        embed: "laser-engraved joint calibration stamp '09' on the articulating arm",
-        reveal: "Foreground robotic arm articulates upwards, uncovering the precision calibration stamp '09' as the camera tracks along the titanium limb",
+        concept: `High-bypass turbofan jet engine maintenance bay in ${brandName} engineering facility`,
+        embed: "precision-stamped titanium rotor stage indicator 'COMPRESSOR 09'",
+        reveal: "Foreground engine cowling swings open on hydraulic hinges as the camera pushes into the spinning titanium turbine blades, uncovering the stamped 'COMPRESSOR 09' rating",
       },
       {
         num: 8,
-        concept: `Optoelectronic quantum compute cryo-chamber with frost-covered manifold`,
-        embed: "digital manifold pressure display reading '8.0'",
-        reveal: "Camera rack-focuses past swirling cryogenic condensation vapor, bringing the glowing blue '8.0' digital readout into crisp contrast",
+        concept: `High-tech modern glass cockpit flight deck during pre-flight systems initialization for ${brandName}`,
+        embed: "digital flight director altitude waypoint display reading 'FL-080'",
+        reveal: "Camera executes a slow forward dolly between captain and first officer seats as ambient cockpit backlighting illuminates the high-contrast avionics screen reading 'FL-080'",
       },
       {
         num: 7,
-        concept: `Autonomous telemetry LIDAR sensor dome assembly`,
-        embed: "embossed serial indicator 'UNIT-7' on the spinning sensor base",
-        reveal: "Camera circles around the rotating LIDAR dome, catching dynamic studio light reflections that illuminate the embossed 'UNIT-7' serial mark",
+        concept: `Lufthansa flight crew executing twilight tarmac walkaround inspection beside the aircraft nose`,
+        embed: "stenciled nose landing gear inspection hatch identifier 'GEAR-07'",
+        reveal: "Flight captain's inspection torchlight sweeps across the gleaming fuselage, illuminating the stenciled 'GEAR-07' marking in sharp relief against the dark tarmac",
       },
       {
         num: 6,
-        concept: `Spacecraft launch propulsion telemetry dashboard`,
-        embed: "analog pressure dial needle sweeping across marker '6'",
-        reveal: "Camera slowly tracks right across dark instrument gauges as amber backlighting sweeps across the dial, highlighting the needle resting at '6'",
+        concept: `Luxury first-class passenger cabin suite with warm ambient lighting for ${brandName}`,
+        embed: "brushed aluminum seat suite console badge 'SUITE 06'",
+        reveal: "Camera glides softly along the curved wood-grain privacy divider as ambient cabin lighting rises, revealing the engraved 'SUITE 06' luxury emblem",
       },
       {
         num: 5,
-        concept: `High-density fiber-optic server cluster rack array`,
-        embed: "illuminated server rack node marker 'CH-05'",
-        reveal: "Camera glides through the server rack aisle as optical data pulses flash, revealing the illuminated node identifier 'CH-05'",
+        concept: `Panoramic glass jet bridge with executive passengers boarding at golden sunset for ${brandName}`,
+        embed: "illuminated digital boarding gate terminal display 'GATE B05'",
+        reveal: "Camera tracks smoothly alongside boarding passengers as golden hour sunlight flares through the panoramic glass, bringing the glowing 'GATE B05' sign into crisp focus",
       },
       {
         num: 4,
-        concept: `Formula-1 telemetry steering wheel cockpit console for ${brandName}`,
-        embed: "digital OLED gear indicator displaying gear '4'",
-        reveal: "Camera dollies forward from the driver's perspective past the cockpit rim as the high-contrast OLED screen illuminates with digital gear '4'",
+        concept: `Aircraft pushback tug and ground crew marshalling on wet rain-soaked airport ramp for ${brandName}`,
+        embed: "retroreflective yellow taxiway ground intersection marker 'TWY 4'",
+        reveal: "Aircraft nosewheel turns smoothly as ground crew marshalling wands trace luminous arcs in the twilight, revealing the wet tarmac marker 'TWY 4'",
       },
       {
         num: 3,
-        concept: `Deep-sea high-pressure exploration vessel cockpit`,
-        embed: "stamped depth gauge bezel marking '3' in marine brass",
-        reveal: "Camera shifts past the reinforced viewport frame, catching the exterior floodlight that highlights the stamped depth mark '3'",
+        concept: `Wet tarmac runway threshold lineup with dramatic runway centerline lighting for ${brandName}`,
+        embed: "painted white runway heading threshold marking 'RWY 03'",
+        reveal: "Camera accelerates low over the wet runway surface as twin high-intensity landing lights reflect across puddles, bringing the bold painted 'RWY 03' into sharp clarity",
       },
       {
         num: 2,
-        concept: `Hypersonic wind-tunnel aerodynamics model with supersonic shockwave lighting`,
-        embed: "mach sensor indicator illuminated at 'M-2'",
-        reveal: "Camera pushes forward along the aerodynamic leading edge as wind-tunnel laser telemetry illuminates the glowing 'M-2' mach indicator",
+        concept: `Cockpit engine throttle quadrant during full-thrust takeoff roll for ${brandName}`,
+        embed: "machined aluminum dual-thrust lever rating marking 'ENG 2 THRUST'",
+        reveal: "Pilot's hand advances the dual throttle levers forward into takeoff detent, uncovering the machined 'ENG 2 THRUST' engraved directly onto the throttle quadrant",
       },
       {
         num: 1,
-        concept: `Master engine ignition activation console for ${brandName}`,
-        embed: "golden primary ignition toggle switch stamped 'CORE 1'",
-        reveal: "Camera executes a rapid cinematic push-in toward the guarded ignition switch as safety louvers retract, revealing the golden toggle marked 'CORE 1'",
+        concept: `Lufthansa flagship aircraft climbing steeply into golden sunset clouds with iconic crane tail livery`,
+        embed: "high-contrast illuminated winglet navigation light housing 'POS 1'",
+        reveal: "Camera executes an exhilarating dynamic pan along the flexed composite wingtip into the setting sun, revealing the luminous navigation beacon 'POS 1' as the aircraft pierces the cloud layer",
       },
     ];
 
