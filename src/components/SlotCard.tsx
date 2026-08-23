@@ -105,11 +105,11 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                 <span>Starting Frame (30%)</span>
               </span>
             </div>
-            <div className="flex-1 flex items-center justify-center min-h-[180px]">
+            <div className="flex-1 aspect-video w-full flex items-center justify-center overflow-hidden rounded-xl bg-black">
               <img
                 src={imageUrl}
                 alt={`Diegetic shot #${slot.index}`}
-                className="max-h-[220px] w-full object-contain rounded-xl"
+                className="w-full h-full object-cover rounded-xl"
               />
             </div>
           </div>
@@ -138,7 +138,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                 muted
                 playsInline
                 controls
-                className="w-full h-full object-contain"
+                className="w-full h-full object-cover"
               />
             </div>
           </div>
@@ -150,7 +150,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               <img
                 src={imageUrl}
                 alt={`Diegetic shot #${slot.index}`}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-cover"
               />
             ) : (
               <div className="text-center p-8 space-y-2 text-slate-500">
