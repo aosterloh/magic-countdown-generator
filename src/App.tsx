@@ -687,11 +687,15 @@ export const App: React.FC = () => {
                 {allImagesReady && currentStage === 3 && (
                   <button
                     type="button"
-                    onClick={() => setCurrentStage(4)}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#34A853] hover:bg-emerald-600 text-white text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all hover:scale-105"
+                    onClick={() => {
+                      setCurrentStage(4);
+                      handleGenerateAllVideos();
+                    }}
+                    className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#34A853] hover:bg-emerald-600 active:scale-98 text-white text-sm font-bold shadow-xl shadow-emerald-500/25 transition-all hover:scale-105"
                   >
+                    <CheckCircle2 className="w-5 h-5" />
                     <span>Approve All 10 Images & Advance to Video Gen</span>
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-5 h-5" />
                   </button>
                 )}
               </div>
@@ -711,6 +715,24 @@ export const App: React.FC = () => {
                       onPlayVideo={setPreviewVideoUri}
                     />
                   ))}
+
+                  {/* Prominent Bottom Action Button to continue without scrolling */}
+                  {allImagesReady && currentStage === 3 && (
+                    <div className="pt-4 pb-2 flex justify-center animate-fadeIn">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCurrentStage(4);
+                          handleGenerateAllVideos();
+                        }}
+                        className="w-full max-w-xl flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-[#34A853] hover:bg-emerald-600 active:scale-98 text-white text-base font-bold shadow-2xl shadow-emerald-500/30 transition-all hover:scale-[1.02]"
+                      >
+                        <CheckCircle2 className="w-5 h-5" />
+                        <span>Approve All 10 Images & Advance to Video Gen</span>
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400 animate-pulse">

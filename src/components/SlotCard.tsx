@@ -92,46 +92,6 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             )}
           </div>
         </div>
-
-        {/* Quick Accept / Auto-Video Button */}
-        <div className="flex items-center gap-2.5 self-end sm:self-center">
-          <button
-            type="button"
-            onClick={() => onAccept(slot.index)}
-            disabled={!slot.currentImageUri || slot.isImageLoading || slot.isVideoLoading}
-            className={`flex items-center gap-2 py-2 px-5 rounded-2xl text-xs font-bold transition-all shadow-sm ${
-              slot.rawVideoUri
-                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#34A853] border border-emerald-300 dark:border-emerald-800'
-                : slot.isVideoLoading
-                ? 'bg-purple-600 text-white animate-pulse'
-                : slot.isImageAccepted
-                ? 'bg-emerald-600 text-white'
-                : 'bg-[#34A853] hover:bg-emerald-600 active:scale-98 text-white shadow-emerald-500/20'
-            } disabled:opacity-40`}
-          >
-            {slot.isVideoLoading ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Synthesizing Veo 3 Video...</span>
-              </>
-            ) : slot.rawVideoUri ? (
-              <>
-                <CheckCircle2 className="w-4 h-4 text-[#34A853]" />
-                <span>Accepted • Veo 3 Ready</span>
-              </>
-            ) : slot.isImageAccepted ? (
-              <>
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Accepted</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Accept Shot</span>
-              </>
-            )}
-          </button>
-        </div>
       </div>
 
       {/* Center Media Showcase: Side-by-Side (30% Image / 70% Video) or Full-Width Image */}
