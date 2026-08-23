@@ -134,8 +134,14 @@ async function getAdcCredentials(): Promise<{ token: string; project: string; ac
   return { token, project, account };
 }
 
-// Google OAuth2 Domain Verification Helper (@cloudspace.goog)
-const ALLOWED_DOMAIN = 'cloudspace.goog';
+// Google OAuth2 Multi-Domain Verification Helper (@cloudspace.goog & @google.com)
+const ALLOWED_DOMAINS = ['cloudspace.goog', 'google.com'];
+
+function isDomainAllowed(email?: string, hd?: string): boolean {
+  if (hd && ALLOWED_DOMAINS.includes(hd)) return true;
+  if (email && ALLOWED_DOMAINS.some((d) => email.toLowerCase().endsWith(`@${d}`))) return true;
+  return false;
+}
 
 async function verifyGoogleToken(token: string): Promise<{ valid: boolean; email?: string; name?: string; picture?: string; error?: string }> {
   try {
@@ -148,11 +154,11 @@ async function verifyGoogleToken(token: string): Promise<{ valid: boolean; email
     const email = data.email || '';
     const hd = data.hd || '';
 
-    if (hd !== ALLOWED_DOMAIN && !email.endsWith(`@${ALLOWED_DOMAIN}`)) {
+    if (!isDomainAllowed(email, hd)) {
       return {
         valid: false,
         email,
-        error: `Access Denied: Account '${email}' does not belong to the authorized '${ALLOWED_DOMAIN}' domain.`,
+        error: `Access Denied: Account '${email}' does not belong to authorized domains (${ALLOWED_DOMAINS.join(', ')}).`,
       };
     }
 
@@ -180,21 +186,21 @@ app.get('/api/auth/me', async (req, res) => {
         email: verifyResult.email,
         name: verifyResult.name,
         picture: verifyResult.picture,
-        domain: ALLOWED_DOMAIN,
+        domains: ALLOWED_DOMAINS,
         authType: 'GOOGLE_OIDC',
       });
     }
   }
 
-  // Fallback: Default to Active GCP Workspace / ADC User (aosterloh@cloudspace.goog)
+  // Fallback: Default to Active GCP Workspace / ADC User (aosterloh@cloudspace.goog / aosterloh@google.com)
   const creds = await getAdcCredentials();
-  const isCloudspace = creds.account.endsWith(`@${ALLOWED_DOMAIN}`);
+  const isAuthorized = isDomainAllowed(creds.account);
 
   return res.json({
-    authenticated: isCloudspace,
-    email: creds.account || `aosterloh@${ALLOWED_DOMAIN}`,
+    authenticated: isAuthorized,
+    email: creds.account || 'aosterloh@cloudspace.goog',
     name: (creds.account || 'Alex Osterloh').split('@')[0],
-    domain: ALLOWED_DOMAIN,
+    domains: ALLOWED_DOMAINS,
     project: creds.project,
     authType: 'ADC_WORKSPACE',
   });
@@ -216,11 +222,11 @@ async function requireCloudspaceDomain(req: express.Request, res: express.Respon
 
   // Check active server ADC account
   const creds = await getAdcCredentials();
-  if (creds.account && !creds.account.endsWith(`@${ALLOWED_DOMAIN}`)) {
-    addLog('WARN', 'ADC_AUTH', `Blocked server execution: Account ${creds.account} is not in @${ALLOWED_DOMAIN}`);
+  if (creds.account && !isDomainAllowed(creds.account)) {
+    addLog('WARN', 'ADC_AUTH', `Blocked server execution: Account ${creds.account} is not in authorized domains (${ALLOWED_DOMAINS.join(', ')})`);
     return res.status(403).json({
       success: false,
-      error: `Access Denied: Server environment is bound to non-authorized account ${creds.account}. Must use @${ALLOWED_DOMAIN}.`,
+      error: `Access Denied: Server environment account ${creds.account} not authorized. Must be @${ALLOWED_DOMAINS.join(' or @')}.`,
     });
   }
 
@@ -241,7 +247,7 @@ app.get('/api/adc-status', async (_req, res) => {
       account: creds.account,
       project: creds.project,
       hasToken: Boolean(creds.token),
-      domain: ALLOWED_DOMAIN,
+      domains: ALLOWED_DOMAINS,
     });
   } catch (err: any) {
     return res.json({
@@ -249,7 +255,7 @@ app.get('/api/adc-status', async (_req, res) => {
       account: 'aosterloh@cloudspace.goog',
       project: 'aosterloh-cs-muc',
       hasToken: true,
-      domain: ALLOWED_DOMAIN,
+      domains: ALLOWED_DOMAINS,
     });
   }
 });
