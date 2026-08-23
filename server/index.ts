@@ -756,7 +756,49 @@ app.post('/api/refine-image', requireCloudspaceDomain, upload.fields([{ name: 'b
   }
 });
 
-// Veo Image-to-Video Engine (Google AI Studio & Vertex AI Long-Running Operations)
+// Helper: Execute an async operation with exponential backoff for capacity / rate limit errors (HTTP 429, 503, 500)
+async function executeWithBackoff<T>(
+  action: (attempt: number) => Promise<T>,
+  context: string,
+  maxRetries: number = 5,
+  initialDelayMs: number = 3000
+): Promise<T> {
+  let lastErr: any;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await action(attempt);
+    } catch (err: any) {
+      lastErr = err;
+      const msg = err.message || '';
+      const isCapacityError =
+        msg.includes('429') ||
+        msg.includes('RESOURCE_EXHAUSTED') ||
+        msg.includes('503') ||
+        msg.includes('500') ||
+        msg.includes('quota') ||
+        msg.includes('capacity') ||
+        msg.includes('rate limit') ||
+        msg.includes('overloaded') ||
+        msg.includes('unavailable');
+
+      if (isCapacityError && attempt < maxRetries) {
+        const jitter = Math.floor(Math.random() * 1500);
+        const delayMs = initialDelayMs * Math.pow(2, attempt - 1) + jitter;
+        addLog(
+          'WARN',
+          'VEO_AI',
+          `[Capacity/RateLimit] ${context} encountered backpressure (${msg.slice(0, 120)}). Retrying in ${(delayMs / 1000).toFixed(1)}s (Attempt ${attempt}/${maxRetries})...`
+        );
+        await new Promise((r) => setTimeout(r, delayMs));
+      } else {
+        throw err;
+      }
+    }
+  }
+  throw lastErr;
+}
+
+// Veo Image-to-Video Engine (Google AI Studio & Vertex AI with Exponential Backoff Retries)
 async function synthesizeVeoVideo(
   imageBuffer: Buffer,
   videoPrompt: string,
@@ -780,50 +822,65 @@ async function synthesizeVeoVideo(
 
   let lastError = '';
 
-  // Method 1: Google AI Studio Gemini API (API Key)
+  // Method 1: Google AI Studio Gemini API (API Key with Exponential Backoff)
   if (key) {
     for (const model of candidateModels) {
       try {
-        addLog('INFO', 'VEO_AI', `Calling Google AI Studio Veo API (${model})...`);
-        const initRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:predictLongRunning?key=${key}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              instances: [
-                {
-                  prompt: videoPrompt,
-                  image: {
-                    bytesBase64Encoded: base64Image,
-                    mimeType: 'image/png',
+        const videoBuffer = await executeWithBackoff(
+          async (retryAttempt) => {
+            addLog('INFO', 'VEO_AI', `Calling Google AI Studio Veo API (${model}) [Attempt ${retryAttempt}]...`);
+            const initRes = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${model}:predictLongRunning?key=${key}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  instances: [
+                    {
+                      prompt: videoPrompt,
+                      image: {
+                        bytesBase64Encoded: base64Image,
+                        mimeType: 'image/png',
+                      },
+                    },
+                  ],
+                  parameters: {
+                    sampleCount: 1,
+                    aspectRatio: '16:9',
+                    durationSeconds: 4,
+                    fps: 60,
+                    personGeneration: 'allow_adult',
                   },
-                },
-              ],
-              parameters: {
-                sampleCount: 1,
-                aspectRatio: '16:9',
-                durationSeconds: 4,
-                fps: 60,
-                personGeneration: 'allow_adult',
-              },
-            }),
-          }
-        );
+                }),
+              }
+            );
 
-        if (initRes.ok) {
-          const initData = await initRes.json();
-          const operationName = initData.name;
-          if (operationName) {
+            if (!initRes.ok) {
+              const errText = await initRes.text();
+              throw new Error(`HTTP ${initRes.status} from ${model}: ${errText}`);
+            }
+
+            const initData = await initRes.json();
+            const operationName = initData.name;
+            if (!operationName) {
+              throw new Error(`Invalid response from ${model}: missing operation handle`);
+            }
+
             addLog('INFO', 'VEO_AI', `Veo operation created: ${operationName}. Polling for completion...`);
 
-            // Poll operation for up to 120 seconds
-            const maxPollAttempts = 30; // 30 * 4s = 120s
-            for (let attempt = 1; attempt <= maxPollAttempts; attempt++) {
+            // Poll operation for up to 140 seconds with resilient error absorption
+            const maxPollAttempts = 35; // 35 * 4s = 140s
+            for (let pollAttempt = 1; pollAttempt <= maxPollAttempts; pollAttempt++) {
               await new Promise((r) => setTimeout(r, 4000));
               const pollRes = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${key}`
               );
+
+              if (pollRes.status === 429 || pollRes.status === 503 || pollRes.status === 500) {
+                addLog('WARN', 'VEO_AI', `Transient HTTP ${pollRes.status} during operation poll. Retrying in 5s...`);
+                await new Promise((r) => setTimeout(r, 5000));
+                continue;
+              }
 
               if (pollRes.ok) {
                 const pollData = await pollRes.json();
@@ -843,29 +900,31 @@ async function synthesizeVeoVideo(
                     addLog('INFO', 'VEO_AI', `Downloading synthesized Veo video from Google Cloud Storage...`);
                     const videoDlRes = await fetch(downloadUrl);
                     if (videoDlRes.ok) {
-                      const videoBuffer = Buffer.from(await videoDlRes.arrayBuffer());
+                      const buf = Buffer.from(await videoDlRes.arrayBuffer());
                       addLog('SUCCESS', 'VEO_AI', `Successfully synthesized real Veo video for Shot #${slotIndex} using ${model}!`);
-                      return { success: true, videoBuffer, modelUsed: model };
+                      return buf;
                     } else {
                       throw new Error(`Failed to download Veo video: HTTP ${videoDlRes.status}`);
                     }
                   } else if (sample?.video?.videoBytes || sample?.video?.bytesBase64Encoded) {
                     const bytes = sample.video.videoBytes || sample.video.bytesBase64Encoded;
-                    const videoBuffer = Buffer.from(bytes, 'base64');
+                    const buf = Buffer.from(bytes, 'base64');
                     addLog('SUCCESS', 'VEO_AI', `Successfully synthesized real Veo video for Shot #${slotIndex} using ${model}!`);
-                    return { success: true, videoBuffer, modelUsed: model };
+                    return buf;
                   }
                 } else {
-                  addLog('INFO', 'VEO_AI', `Veo Shot #${slotIndex} rendering in progress (${attempt * 4}s elapsed)...`);
+                  addLog('INFO', 'VEO_AI', `Veo Shot #${slotIndex} rendering in progress (${pollAttempt * 4}s elapsed)...`);
                 }
               }
             }
-          }
-        } else {
-          const errText = await initRes.text();
-          lastError = `Model ${model} returned HTTP ${initRes.status}: ${errText.slice(0, 150)}`;
-          addLog('WARN', 'VEO_AI', lastError);
-        }
+            throw new Error(`Veo operation timed out after 140s`);
+          },
+          `Google AI Studio Veo (${model}) Shot #${slotIndex}`,
+          5,
+          3000
+        );
+
+        return { success: true, videoBuffer, modelUsed: model };
       } catch (err: any) {
         lastError = err.message;
         addLog('WARN', 'VEO_AI', `Model ${model} attempt failed: ${err.message}`);
@@ -873,44 +932,53 @@ async function synthesizeVeoVideo(
     }
   }
 
-  // Method 2: Vertex AI API (ADC Token)
+  // Method 2: Vertex AI API (ADC Token with Exponential Backoff)
   if (creds.token) {
     for (const model of candidateModels) {
       try {
-        addLog('INFO', 'VEO_AI', `Attempting Vertex AI Veo endpoint for model "${model}" in ${gcpRegion}...`);
-        const vertexUrl = `https://${gcpRegion}-aiplatform.googleapis.com/v1/projects/${gcpProject}/locations/${gcpRegion}/publishers/google/models/${model}:predictLongRunning`;
-        const vertexRes = await fetch(vertexUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${creds.token}`,
-          },
-          body: JSON.stringify({
-            instances: [
-              {
-                prompt: videoPrompt,
-                image: {
-                  bytesBase64Encoded: base64Image,
-                  mimeType: 'image/png',
-                },
+        const videoBuffer = await executeWithBackoff(
+          async (retryAttempt) => {
+            addLog('INFO', 'VEO_AI', `Attempting Vertex AI Veo endpoint (${model}) in ${gcpRegion} [Attempt ${retryAttempt}]...`);
+            const vertexUrl = `https://${gcpRegion}-aiplatform.googleapis.com/v1/projects/${gcpProject}/locations/${gcpRegion}/publishers/google/models/${model}:predictLongRunning`;
+            const vertexRes = await fetch(vertexUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${creds.token}`,
               },
-            ],
-            parameters: {
-              sampleCount: 1,
-              aspectRatio: '16:9',
-              durationSeconds: 4,
-              fps: 60,
-              personGeneration: 'allow_adult',
-            },
-          }),
-        });
+              body: JSON.stringify({
+                instances: [
+                  {
+                    prompt: videoPrompt,
+                    image: {
+                      bytesBase64Encoded: base64Image,
+                      mimeType: 'image/png',
+                    },
+                  },
+                ],
+                parameters: {
+                  sampleCount: 1,
+                  aspectRatio: '16:9',
+                  durationSeconds: 4,
+                  fps: 60,
+                  personGeneration: 'allow_adult',
+                },
+              }),
+            });
 
-        if (vertexRes.ok) {
-          const vertexData = await vertexRes.json();
-          const operationName = vertexData.name;
-          if (operationName) {
+            if (!vertexRes.ok) {
+              const errText = await vertexRes.text();
+              throw new Error(`HTTP ${vertexRes.status} from Vertex Veo: ${errText}`);
+            }
+
+            const vertexData = await vertexRes.json();
+            const operationName = vertexData.name;
+            if (!operationName) {
+              throw new Error(`Missing operation handle from Vertex Veo`);
+            }
+
             addLog('INFO', 'VEO_AI', `Vertex Veo operation created: ${operationName}. Polling for completion...`);
-            for (let attempt = 1; attempt <= 30; attempt++) {
+            for (let pollAttempt = 1; pollAttempt <= 35; pollAttempt++) {
               await new Promise((r) => setTimeout(r, 4000));
               const pollRes = await fetch(
                 `https://${gcpRegion}-aiplatform.googleapis.com/v1/${operationName}`,
@@ -918,6 +986,12 @@ async function synthesizeVeoVideo(
                   headers: { Authorization: `Bearer ${creds.token}` },
                 }
               );
+
+              if (pollRes.status === 429 || pollRes.status === 503 || pollRes.status === 500) {
+                addLog('WARN', 'VEO_AI', `Transient HTTP ${pollRes.status} during Vertex operation poll. Retrying in 5s...`);
+                await new Promise((r) => setTimeout(r, 5000));
+                continue;
+              }
 
               if (pollRes.ok) {
                 const pollData = await pollRes.json();
@@ -935,23 +1009,29 @@ async function synthesizeVeoVideo(
                       headers: { Authorization: `Bearer ${creds.token}` },
                     });
                     if (videoDlRes.ok) {
-                      const videoBuffer = Buffer.from(await videoDlRes.arrayBuffer());
+                      const buf = Buffer.from(await videoDlRes.arrayBuffer());
                       addLog('SUCCESS', 'VEO_AI', `Successfully synthesized real Vertex Veo video for Shot #${slotIndex}!`);
-                      return { success: true, videoBuffer, modelUsed: `vertex-${model}` };
+                      return buf;
                     }
                   } else if (sample?.video?.videoBytes || sample?.video?.bytesBase64Encoded) {
                     const bytes = sample.video.videoBytes || sample.video.bytesBase64Encoded;
-                    const videoBuffer = Buffer.from(bytes, 'base64');
+                    const buf = Buffer.from(bytes, 'base64');
                     addLog('SUCCESS', 'VEO_AI', `Successfully synthesized real Vertex Veo video for Shot #${slotIndex}!`);
-                    return { success: true, videoBuffer, modelUsed: `vertex-${model}` };
+                    return buf;
                   }
                 } else {
-                  addLog('INFO', 'VEO_AI', `Vertex Veo Shot #${slotIndex} rendering in progress (${attempt * 4}s elapsed)...`);
+                  addLog('INFO', 'VEO_AI', `Vertex Veo Shot #${slotIndex} rendering in progress (${pollAttempt * 4}s elapsed)...`);
                 }
               }
             }
-          }
-        }
+            throw new Error(`Vertex Veo operation timed out after 140s`);
+          },
+          `Vertex AI Veo (${model}) Shot #${slotIndex}`,
+          5,
+          3000
+        );
+
+        return { success: true, videoBuffer, modelUsed: `vertex-${model}` };
       } catch (vertexErr: any) {
         lastError = vertexErr.message;
         addLog('WARN', 'VEO_AI', `Vertex Veo attempt error: ${vertexErr.message}`);
