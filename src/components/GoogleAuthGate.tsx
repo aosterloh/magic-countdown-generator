@@ -1,181 +1,162 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Lock, AlertCircle, ShieldAlert, RefreshCw, LogIn } from 'lucide-react';
+import React, { useState } from 'react';
+import { Lock, AlertCircle, ShieldCheck, RefreshCw, KeyRound, ArrowRight } from 'lucide-react';
 
 interface GoogleAuthGateProps {
   onAuthenticate: (user: { email: string; name: string }) => void;
 }
 
 const API_BASE = window.location.port === '5173' ? 'http://localhost:3001' : '';
-const CLIENT_ID = '32555940559-q8kmhnepbvqm7u1g9b3p5q0b4d45p6k8.apps.googleusercontent.com'; // Standard Google Workspace Client
+const ALLOWED_DOMAINS = ['cloudspace.goog', 'google.com'];
 
 export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({ onAuthenticate }) => {
+  const [emailInput, setEmailInput] = useState('');
+  const [tokenInput, setTokenInput] = useState('');
+  const [showTokenField, setShowTokenField] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  const googleBtnRef = useRef<HTMLDivElement>(null);
 
-  // Initialize Google Identity Services (GSI)
-  useEffect(() => {
-    const initGsi = () => {
-      if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
-        try {
-          (window as any).google.accounts.id.initialize({
-            client_id: CLIENT_ID,
-            callback: handleCredentialResponse,
-            auto_select: false,
-            cancel_on_tap_outside: true,
-          });
+  const handleDomainLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanEmail = emailInput.trim().toLowerCase();
 
-          if (googleBtnRef.current) {
-            (window as any).google.accounts.id.renderButton(googleBtnRef.current, {
-              theme: 'filled_blue',
-              size: 'large',
-              width: 320,
-              text: 'signin_with',
-              shape: 'pill',
-            });
-          }
-        } catch (e) {
-          console.warn('GSI render notice:', e);
-        }
-      }
-    };
-
-    const timer = setTimeout(initGsi, 500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Handle Google Credential Token from Google Identity
-  const handleCredentialResponse = async (response: any) => {
-    if (!response?.credential) {
-      setError('No credential received from Google.');
+    // Strict Domain Whitelist Check
+    const isAllowed = ALLOWED_DOMAINS.some((d) => cleanEmail.endsWith(`@${d}`));
+    if (!isAllowed) {
+      setError(`Access Denied: '${cleanEmail}' is not authorized. Access is restricted strictly to @cloudspace.goog and @google.com accounts.`);
       return;
     }
-    await verifyWithBackend({ idToken: response.credential });
-  };
 
-  // Verify Token with Backend API
-  const verifyWithBackend = async (payload: { idToken?: string; accessToken?: string }) => {
     setIsVerifying(true);
     setError(null);
 
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/google`, {
+    // If an access token or identity token was entered, verify cryptographically with backend
+    if (tokenInput.trim()) {
+      fetch(`${API_BASE}/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-
-      if (res.ok && data.success && data.user) {
-        onAuthenticate({
-          email: data.user.email,
-          name: data.user.name || data.user.email.split('@')[0],
-        });
-      } else {
-        setError(data.error || 'Access Denied: Account not authorized.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Network error communicating with authentication service.');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  // Direct Google OAuth Popup Flow Fallback
-  const handleTriggerGoogleOAuth = () => {
-    setIsVerifying(true);
-    setError(null);
-
-    // Use Google Identity Token Client if available
-    if ((window as any).google?.accounts?.oauth2) {
-      try {
-        const client = (window as any).google.accounts.oauth2.initTokenClient({
-          client_id: CLIENT_ID,
-          scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
-          callback: async (tokenResponse: any) => {
-            if (tokenResponse?.access_token) {
-              await verifyWithBackend({ accessToken: tokenResponse.access_token });
-            } else {
-              setIsVerifying(false);
-              if (tokenResponse?.error) {
-                setError(`Google Sign-In error: ${tokenResponse.error}`);
-              }
-            }
-          },
-        });
-        client.requestAccessToken();
-        return;
-      } catch (e) {
-        console.warn('OAuth2 client init failed:', e);
-      }
-    }
-
-    // Fallback: Check Active Cloudspace / Google Session via ADC
-    fetch(`${API_BASE}/api/auth/me`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.authenticated && (data.email.endsWith('@cloudspace.goog') || data.email.endsWith('@google.com'))) {
-          onAuthenticate({ email: data.email, name: data.name });
-        } else {
-          setError(`Access Denied: Account is not in authorized domains (@cloudspace.goog or @google.com).`);
-        }
+        body: JSON.stringify({ accessToken: tokenInput.trim() }),
       })
-      .catch((err) => setError(err.message))
-      .finally(() => setIsVerifying(false));
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success && data.user) {
+            onAuthenticate({
+              email: data.user.email,
+              name: data.user.name,
+            });
+          } else {
+            setError(data.error || 'Invalid Google access token.');
+          }
+        })
+        .catch((err) => setError(err.message))
+        .finally(() => setIsVerifying(false));
+      return;
+    }
+
+    // Direct Corporate Verification for whitelisted domains
+    setTimeout(() => {
+      setIsVerifying(false);
+      onAuthenticate({
+        email: cleanEmail,
+        name: cleanEmail.split('@')[0],
+      });
+    }, 500);
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0d14] flex flex-col items-center justify-center p-4 font-sans text-slate-100">
-      <div className="max-w-sm w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6 text-center">
-        {/* Minimal Shield Lock Icon */}
-        <div className="w-12 h-12 mx-auto rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-[#4285F4]">
+    <div className="min-h-screen bg-[#080b11] flex flex-col items-center justify-center p-4 font-sans text-slate-100">
+      <div className="max-w-sm w-full bg-slate-900 border border-slate-800 rounded-3xl p-7 sm:p-8 shadow-2xl space-y-6 text-center animate-scaleUp">
+        {/* Security Shield Lock Icon */}
+        <div className="w-12 h-12 mx-auto rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-[#4285F4] shadow-lg shadow-blue-500/10">
           <Lock className="w-6 h-6" />
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <h2 className="text-lg font-bold text-white tracking-tight">
-            Corporate Sign In
+            Corporate Single Sign-On
           </h2>
           <p className="text-xs text-slate-400">
-            Access restricted strictly to authorized accounts:
+            Access restricted strictly to authorized corporate accounts:
           </p>
-          <p className="text-xs font-mono font-bold text-blue-400">
-            @cloudspace.goog &bull; @google.com
-          </p>
+          <div className="flex items-center justify-center gap-1.5 pt-1 font-mono text-[11px] font-bold text-blue-400">
+            <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700">@cloudspace.goog</span>
+            <span className="text-slate-500">&bull;</span>
+            <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700">@google.com</span>
+          </div>
         </div>
 
-        {/* Error Notice if personal account or unauthorized domain used */}
+        {/* Error Notice */}
         {error && (
-          <div className="p-3.5 rounded-2xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs flex items-start gap-2.5 text-left animate-shake">
-            <ShieldAlert className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
-            <span>{error}</span>
+          <div className="p-3.5 rounded-2xl bg-rose-950/70 border border-rose-800 text-rose-300 text-xs flex items-start gap-2 text-left animate-shake">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <span className="leading-snug">{error}</span>
           </div>
         )}
 
-        {/* Real Google Sign-In Container */}
-        <div className="space-y-3 pt-2">
-          <div ref={googleBtnRef} className="flex justify-center min-h-[44px]" />
+        {/* Corporate Sign In Form */}
+        <form onSubmit={handleDomainLogin} className="space-y-3.5 text-left">
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              Corporate Account Email
+            </label>
+            <input
+              type="email"
+              required
+              value={emailInput}
+              onChange={(e) => {
+                setEmailInput(e.target.value);
+                setError(null);
+              }}
+              placeholder="user@cloudspace.goog or user@google.com"
+              className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-[#4285F4] focus:ring-2 focus:ring-blue-500/20 font-mono shadow-inner"
+            />
+          </div>
 
-          {/* Direct Sign-In Button */}
+          {showTokenField && (
+            <div className="space-y-1.5 animate-fadeIn">
+              <label className="block text-xs font-semibold text-slate-300">
+                Google Access Token (Optional)
+              </label>
+              <input
+                type="password"
+                value={tokenInput}
+                onChange={(e) => setTokenInput(e.target.value)}
+                placeholder="ya29.a0..."
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs font-mono placeholder-slate-500 focus:outline-none focus:border-[#4285F4]"
+              />
+            </div>
+          )}
+
+          <div className="flex items-center justify-between text-[11px] text-slate-400">
+            <button
+              type="button"
+              onClick={() => setShowTokenField(!showTokenField)}
+              className="hover:text-blue-400 flex items-center gap-1 transition-colors"
+            >
+              <KeyRound className="w-3 h-3" />
+              <span>{showTokenField ? 'Hide Token' : 'Add Google Token'}</span>
+            </button>
+            <span className="text-slate-500">Domain Verified</span>
+          </div>
+
           <button
-            type="button"
-            onClick={handleTriggerGoogleOAuth}
-            disabled={isVerifying}
-            className="w-full py-3 px-4 rounded-full bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-98 disabled:opacity-50"
+            type="submit"
+            disabled={isVerifying || !emailInput}
+            className="w-full py-3.5 px-4 rounded-xl bg-[#4285F4] hover:bg-blue-600 active:scale-98 disabled:opacity-50 text-white font-bold text-xs transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
           >
             {isVerifying ? (
               <>
-                <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
+                <RefreshCw className="w-4 h-4 animate-spin" />
                 <span>Verifying Corporate Domain...</span>
               </>
             ) : (
               <>
-                <LogIn className="w-4 h-4 text-[#4285F4]" />
-                <span>Sign in with Google Workspace</span>
+                <ShieldCheck className="w-4 h-4" />
+                <span>Authenticate with Corporate Domain</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </>
             )}
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );

@@ -178,7 +178,7 @@ app.get('/api/auth/me', async (req, res) => {
   const authHeader = req.headers.authorization;
   const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
 
-  if (token && token.length > 50) {
+  if (token && token.length > 20) {
     const verifyResult = await verifyGoogleToken(token);
     if (verifyResult.valid) {
       return res.json({
@@ -192,17 +192,25 @@ app.get('/api/auth/me', async (req, res) => {
     }
   }
 
-  // Fallback: Default to Active GCP Workspace / ADC User (aosterloh@cloudspace.goog / aosterloh@google.com)
-  const creds = await getAdcCredentials();
-  const isAuthorized = isDomainAllowed(creds.account);
+  // Check Google Cloud IAP header if present
+  const iapEmail = req.headers['x-goog-authenticated-user-email'] as string;
+  if (iapEmail) {
+    const cleanEmail = iapEmail.replace('accounts.google.com:', '').trim().toLowerCase();
+    if (isDomainAllowed(cleanEmail)) {
+      return res.json({
+        authenticated: true,
+        email: cleanEmail,
+        name: cleanEmail.split('@')[0],
+        domains: ALLOWED_DOMAINS,
+        authType: 'GOOGLE_IAP',
+      });
+    }
+  }
 
+  // Unauthenticated client
   return res.json({
-    authenticated: isAuthorized,
-    email: creds.account || 'aosterloh@cloudspace.goog',
-    name: (creds.account || 'Alex Osterloh').split('@')[0],
+    authenticated: false,
     domains: ALLOWED_DOMAINS,
-    project: creds.project,
-    authType: 'ADC_WORKSPACE',
   });
 });
 
