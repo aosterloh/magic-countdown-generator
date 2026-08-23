@@ -68,13 +68,16 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({ onAuthenticate }
       const data = await res.json();
 
       if (res.ok && data.success && data.user) {
-        onAuthenticate({
-          email: data.user.email,
-          name: data.user.name || data.user.email.split('@')[0],
-        });
-      } else {
-        setError(data.error || 'Access Denied: You must sign in with an authorized @cloudspace.goog or @google.com account.');
+        const email = (data.user.email || '').trim().toLowerCase();
+        if (email.endsWith('@cloudspace.goog') || email.endsWith('@google.com')) {
+          onAuthenticate({
+            email,
+            name: data.user.name || email.split('@')[0],
+          });
+          return;
+        }
       }
+      setError(data.error || 'Access Denied: You must sign in with an authorized @cloudspace.goog or @google.com account. Personal accounts (@gmail.com) are strictly disallowed.');
     } catch (err: any) {
       setError(err.message || 'Authentication error.');
     } finally {

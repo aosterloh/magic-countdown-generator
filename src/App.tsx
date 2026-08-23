@@ -513,8 +513,17 @@ export const App: React.FC = () => {
   const generatedSlotsStream = slots.filter((s) => s.currentImageUri || s.isImageLoading);
 
   const handleAuthenticate = (user: { email: string; name: string }) => {
-    setAuthUser(user);
-    localStorage.setItem('auth_user', JSON.stringify(user));
+    const cleanEmail = (user.email || '').trim().toLowerCase();
+    if (cleanEmail.endsWith('@cloudspace.goog') || cleanEmail.endsWith('@google.com')) {
+      const validUser = { email: cleanEmail, name: user.name || cleanEmail.split('@')[0] };
+      setAuthUser(validUser);
+      localStorage.setItem('auth_user', JSON.stringify(validUser));
+    }
+  };
+
+  const handleSignOut = () => {
+    setAuthUser(null);
+    localStorage.removeItem('auth_user');
   };
 
   if (!authUser) {
@@ -533,6 +542,8 @@ export const App: React.FC = () => {
         onModelChange={setSelectedModel}
         isDarkMode={isDarkMode}
         onToggleTheme={handleToggleTheme}
+        authUser={authUser}
+        onSignOut={handleSignOut}
       />
 
       {/* Main Content Area */}

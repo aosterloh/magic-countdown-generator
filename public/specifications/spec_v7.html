@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Magic Countdown Generator Specification v7.0 (EGM Phase E7)</title>
+  <title>Magic Countdown Generator Specification v7.0 (EGM Phase E8)</title>
   <style>
     :root {
       --google-blue: #4285f4;
@@ -105,79 +105,48 @@
 <body>
   <div class="container">
     <header>
-      <div class="badge-google">Elephant-Goldfish Model (EGM) Specification v7.0</div>
-      <h1>Magic Countdown Generator Specification</h1>
-      <p class="subtitle">
-        30-Second Cinematic Countdown Generator with Gemini Nano Banana (gemini-2.5-flash-image) and Veo 3 Video Synthesis
-      </p>
+      <div class="badge-google">EGM Phase E8 Specification &bull; Google Cloud Run Production</div>
+      <h1>Magic Countdown Generator</h1>
+      <p class="subtitle">30-Second Cinematic Countdown Generator powered by Gemini Nano Banana (gemini-2.5-flash-image) &amp; Veo 3 Video Synthesis.</p>
     </header>
 
-    <!-- 1. Multi-Step Human Verification Pipeline -->
+    <!-- Section 1: Security & Corporate Authentication -->
     <section>
-      <h2>1. Five-Stage Sequential Workflow Pipeline</h2>
-      <p>
-        In accordance with the Elephant-Goldfish Model (EGM), the user exercises strict verification gates before resource-intensive generation:
-      </p>
+      <h2>1. Corporate Google Single Sign-On &amp; Dual-Domain Security</h2>
+      <p>The application enforces strict cryptographic domain gating against Google's public token servers:</p>
       <ul>
-        <li><strong>Stage 1 (Brand & Style Direction):</strong> Configure Customer Brand (e.g. Porsche Motorsport) and scene setting. Action: <em>"Generate 10 Text Prompts"</em>.</li>
-        <li><strong>Stage 2 (Human Verification & Prompt Review):</strong> Review all 10 diegetic prompt cards (10 down to 1). The user can manually edit prompts in-place, trigger <em>"Re-create Prompt"</em> for individual numbers with Gemini, or approve all prompts before proceeding. Action: <em>"Create Veo 3 Input Images"</em>.</li>
-        <li><strong>Stage 3 (Diegetic Image Synthesis):</strong> 2-worker bounded parallel pool synthesizes photorealistic 1024x1024 / 16:9 images with Gemini Nano Banana. Full-width stacked layout for maximum laptop screen resolution.</li>
-        <li><strong>Stage 4 (Veo 3 Video Synthesis & Side-by-Side Inspection):</strong> Generates 4.0s dynamic camera zoom clips without audio (<code>-an</code>). Once generated, each card dynamically splits into <strong>30% Input Frame / 70% Veo 3 Video</strong>.</li>
-        <li><strong>Stage 5 (Temporal Alignment & Master Export):</strong> Interactive waveform timeline maps slots to the 30.0s master soundtrack and executes native FFmpeg concatenation.</li>
+        <li><strong>Authorized Whitelist:</strong> Strictly restricted to <code>@cloudspace.goog</code> and <code>@google.com</code> corporate accounts.</li>
+        <li><strong>Unauthorized Domain Rejection:</strong> Any personal accounts (e.g. <code>@gmail.com</code>) or unauthorized external domains receive immediate HTTP 403 Forbidden with access blocked.</li>
+        <li><strong>User Profile Header:</strong> The top-right header displays the active logged-in user profile avatar, name, verified corporate email, and a quick <strong>Sign out</strong> button.</li>
       </ul>
     </section>
 
-    <!-- 2. AI Model Stack -->
+    <!-- Section 2: Coordinated Reveal Architecture -->
     <section>
-      <h2>2. AI Model Integration & APIs</h2>
+      <h2>2. Coordinated Image Framing &amp; Dynamic Video Reveal Architecture</h2>
+      <p>To maximize cinematic suspense and storytelling, image and video generation follow a coordinated reveal strategy:</p>
       <div class="grid">
         <div class="card">
-          <span class="badge">gemini-2.5-flash</span>
-          <h3>Prompt Director Engine</h3>
-          <p>Synthesizes 10 creative diegetic prompt concepts and handles single-shot prompt re-creation via <code>/api/recreate-prompt</code>.</p>
+          <h3>📸 1. Starting Image (Reveal Framing)</h3>
+          <p>In most starting images (7–8 of 10), the diegetic number does <em>not</em> jump out immediately in the spectator's eyes. The composition frames the machinery, atmospheric depth, and foreground occluding structures (e.g. guide vanes, carbon fiber shrouds, pipes, atmospheric steam/shadows), specifically planning for the hidden numeral to be discovered later.</p>
         </div>
         <div class="card">
-          <span class="badge">gemini-2.5-flash-image</span>
-          <h3>Gemini Nano Banana</h3>
-          <p>Generates photorealistic 16:9 images with physically embedded countdown numerals (10 to 1) directly in machine textures.</p>
-        </div>
-        <div class="card">
-          <span class="badge">Google Veo 3</span>
-          <h3>Image-to-Video Engine</h3>
-          <p>4.0-second 60fps dynamic camera push-in zooms rendered without audio (<code>-an</code>, <code>-preset ultrafast</code>) for rapid rendering throughput.</p>
-        </div>
-        <div class="card">
-          <span class="badge">FFmpeg Native Core</span>
-          <h3>Master Soundtrack Muxing</h3>
-          <p>Concatenates the 10 video clips and overlays the 30.0-second master audio track with exact millisecond synchronization.</p>
+          <h3>🎥 2. Veo 3 Video Motion (Dynamic Reveal)</h3>
+          <p>Each shot is paired with a continuous 4-second camera motion prompt (e.g. camera push-in past foreground vanes, rack focus from vapor, dynamic lighting sweep, or articulating limb) that organically brings the physically embedded diegetic numeral into sharp, crystal-clear focus during playback.</p>
         </div>
       </div>
     </section>
 
-    <!-- 3. System Architecture & Observability -->
+    <!-- Section 3: 5-Stage Step-by-Step Workflow -->
     <section>
-      <h2>3. Observability & Portal Architecture</h2>
+      <h2>3. 5-Stage Human-in-the-Loop Workflow</h2>
       <ul>
-        <li><strong>Live Log Analysis:</strong> Real-time in-memory ring buffer tracking all Gemini AI requests, latency, image payload sizes (e.g. 1.66 MB PNG), and HTTP status codes via <code>GET /api/logs</code>.</li>
-        <li><strong>React Portal Modals:</strong> All overlays (Log Analysis, Test Gemini API, Model Selector) are portaled to <code>document.body</code> at <code>z-[99999]</code> to prevent clipping or viewport occlusion.</li>
-        <li><strong>2-Worker Bounded Queue:</strong> Guarantees that neither image generation nor video rendering exceeds 2 concurrent tasks, preventing 429 quota errors.</li>
+        <li><span class="step-badge">1</span><strong>Brand &amp; Style:</strong> Customer brand definition and aesthetic direction (e.g. Porsche Motorsport).</li>
+        <li><span class="step-badge">2</span><strong>Paired Prompt Review:</strong> Review and customize both the <em>Starting Image Composition</em> and the <em>Veo 3 Motion Reveal Prompt</em> side-by-side with single-click Gemini re-creation.</li>
+        <li><span class="step-badge">3</span><strong>Diegetic Images:</strong> 2-Worker bounded queue synthesis with Gemini Nano Banana (<code>gemini-2.5-flash-image</code>).</li>
+        <li><span class="step-badge">4</span><strong>Single-Click Accept &amp; Video Render:</strong> Clicking "Accept Shot" immediately triggers the 4.0s Veo 3 video compilation and splits the card into <strong>30% Starting Frame / 70% Veo 3 Reveal Video</strong>.</li>
+        <li><span class="step-badge">5</span><strong>Master Export:</strong> Temporal waveform audio sync and 30.0s master countdown video export with native audio muxing.</li>
       </ul>
-    </section>
-
-    <!-- 4. Endpoints & API Contract -->
-    <section>
-      <h2>4. Backend API Contract</h2>
-      <pre>
-GET  /specifications/spec_v7.html       - Static EGM HTML specification documentation
-GET  /api/logs                          - Real-time event log buffer and AI traces
-POST /api/generate-diegetic-prompts      - Batch 10 prompt synthesis (Gemini 2.5 Flash)
-POST /api/recreate-prompt               - Single prompt re-creation (Gemini 2.5 Flash)
-POST /api/generate-image                - 16:9 image synthesis (Gemini Nano Banana)
-POST /api/test-gemini-api               - Direct single-image diagnostic test
-POST /api/refine-image                  - 2-image dual reference refinement
-POST /api/generate-video                - 4.0s Veo 3 video compilation (-an)
-POST /api/process-temporal-video        - FFmpeg speed/trim temporal alignment
-POST /api/export-master                 - Master 30.0s video export + soundtrack mux</pre>
     </section>
   </div>
 </body>
