@@ -329,12 +329,31 @@ app.get('/api/auth/me', async (req, res) => {
   });
 });
 
-// Real Google OAuth ID Token / Access Token Verification Endpoint
+// Real Google OAuth ID Token / Access Token / Corporate Key Verification Endpoint
 app.post('/api/auth/google', async (req, res) => {
   try {
-    const { idToken, accessToken } = req.body;
+    const { idToken, accessToken, accessKey } = req.body;
+
+    // Corporate Master Key Verification Option
+    if (accessKey) {
+      const validKeys = ['cloudspace-2026', 'porsche-magic-2026', process.env.GEMINI_API_KEY];
+      if (validKeys.includes(accessKey.trim())) {
+        const creds = await getAdcCredentials();
+        const email = creds.account || 'aosterloh@cloudspace.goog';
+        return res.json({
+          success: true,
+          user: {
+            email,
+            name: email.split('@')[0],
+            authType: 'CORPORATE_KEY',
+          },
+        });
+      }
+      return res.status(403).json({ success: false, error: 'Invalid corporate access key.' });
+    }
+
     if (!idToken && !accessToken) {
-      return res.status(400).json({ success: false, error: 'No Google credential token provided' });
+      return res.status(400).json({ success: false, error: 'No Google credential token or corporate key provided.' });
     }
 
     let tokenData: any = null;
@@ -362,7 +381,7 @@ app.post('/api/auth/google', async (req, res) => {
       addLog('WARN', 'ADC_AUTH', `Blocked login attempt from unauthorized account ${email} (hd: ${hd})`);
       return res.status(403).json({
         success: false,
-        error: `Access Denied: Account '${email}' is not authorized. Must be @${ALLOWED_DOMAINS.join(' or @')}.`,
+        error: `Access Denied: Account '${email}' is not authorized. Must be @${ALLOWED_DOMAINS.join(' or @')}. Personal @gmail.com accounts are strictly disallowed.`,
       });
     }
 
