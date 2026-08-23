@@ -178,227 +178,45 @@ async function verifyGoogleToken(token: string): Promise<{ valid: boolean; email
   }
 }
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+const APP_PASSWORD = process.env.APP_PASSWORD || '';
 
-// 1. Google OAuth SSO Login Initiation
-app.get('/api/auth/google/login', (req, res) => {
-  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-  const host = req.get('host');
-  const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
-
-  const params = new URLSearchParams({
-    client_id: GOOGLE_CLIENT_ID,
-    redirect_uri: redirectUri,
-    response_type: 'code',
-    scope: 'openid email profile',
-    access_type: 'offline',
-    prompt: 'select_account',
-    hd: 'cloudspace.goog',
-  });
-
-  return res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
-});
-
-// 2. Google OAuth SSO Callback & Cryptographic Domain Verification
-app.get('/api/auth/google/callback', async (req, res) => {
+// 1. Password-Based Corporate Authentication Endpoint
+app.post('/api/auth/password', (req, res) => {
   try {
-    const code = req.query.code as string;
-    const authError = req.query.error as string;
-
-    if (authError) {
-      return res.status(400).send(`
-        <div style="font-family:system-ui,sans-serif;max-width:500px;margin:60px auto;padding:32px;border-radius:24px;background:#0f172a;color:#f8fafc;border:1px solid #334155;text-align:center;">
-          <h2 style="color:#ef4444;font-size:20px;font-weight:bold;margin-bottom:12px;">Sign-In Canceled or Failed</h2>
-          <p style="color:#94a3b8;font-size:14px;line-height:1.5;">${authError}</p>
-          <a href="/" style="display:inline-block;margin-top:24px;padding:12px 24px;background:#4285f4;color:#fff;text-decoration:none;border-radius:12px;font-weight:bold;font-size:14px;">Return to Sign In</a>
-        </div>
-      `);
+    const { password } = req.body;
+    if (!password) {
+      return res.status(400).json({ success: false, error: 'Password is required' });
     }
 
-    if (!code) {
-      return res.status(400).send('<h1>No authorization code received from Google</h1>');
-    }
-
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const host = req.get('host');
-    const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
-
-    // Exchange authorization code with Google OAuth servers
-    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        code,
-        client_id: GOOGLE_CLIENT_ID,
-        client_secret: GOOGLE_CLIENT_SECRET,
-        redirect_uri: redirectUri,
-        grant_type: 'authorization_code',
-      }),
-    });
-
-    if (!tokenRes.ok) {
-      const errBody = await tokenRes.text();
-      addLog('ERROR', 'ADC_AUTH', `Google token exchange error: ${errBody}`);
-      return res.status(401).send(`
-        <div style="font-family:system-ui,sans-serif;max-width:500px;margin:60px auto;padding:32px;border-radius:24px;background:#0f172a;color:#f8fafc;border:1px solid #334155;text-align:center;">
-          <h2 style="color:#ef4444;font-size:20px;font-weight:bold;margin-bottom:12px;">Authentication Exchange Failed</h2>
-          <p style="color:#94a3b8;font-size:14px;line-height:1.5;">${errBody}</p>
-          <a href="/" style="display:inline-block;margin-top:24px;padding:12px 24px;background:#4285f4;color:#fff;text-decoration:none;border-radius:12px;font-weight:bold;font-size:14px;">Return to Sign In</a>
-        </div>
-      `);
-    }
-
-    const tokenData = await tokenRes.json();
-    const idToken = tokenData.id_token;
-
-    // Verify tokeninfo against Google public API
-    const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
-    if (!verifyRes.ok) {
-      return res.status(401).send('<h1>Invalid Google ID Token returned</h1>');
-    }
-
-    const profile = await verifyRes.json();
-    const email = (profile.email || '').trim().toLowerCase();
-    const hd = profile.hd || '';
-
-    // Strict Domain Whitelist Enforcement: @cloudspace.goog or @google.com
-    if (!isDomainAllowed(email, hd)) {
-      addLog('WARN', 'ADC_AUTH', `Blocked login attempt: Account ${email} is not in authorized domains (${ALLOWED_DOMAINS.join(', ')})`);
-      return res.status(403).send(`
-        <div style="font-family:system-ui,sans-serif;max-width:500px;margin:60px auto;padding:36px;border-radius:24px;background:#0f172a;color:#f8fafc;border:1px solid #e11d48;text-align:center;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
-          <div style="width:48px;height:48px;border-radius:16px;background:rgba(225,29,72,0.15);border:1px solid rgba(225,29,72,0.3);margin:0 auto 16px auto;display:flex;align-items:center;justify-content:center;color:#f43f5e;font-size:24px;">🚫</div>
-          <h2 style="color:#f43f5e;font-size:20px;font-weight:bold;margin-bottom:8px;">Access Denied (403 Forbidden)</h2>
-          <p style="color:#cbd5e1;font-size:14px;line-height:1.6;margin-bottom:12px;">The signed-in account <strong>${email}</strong> is not authorized to use this application.</p>
-          <p style="color:#94a3b8;font-size:12px;background:#1e293b;padding:10px 14px;border-radius:12px;border:1px solid #334155;margin-bottom:24px;">Access is restricted strictly to <strong>@cloudspace.goog</strong> and <strong>@google.com</strong> corporate accounts. Personal accounts (@gmail.com) are strictly disallowed.</p>
-          <a href="/" style="display:inline-block;padding:12px 24px;background:#4285f4;color:#fff;text-decoration:none;border-radius:12px;font-weight:bold;font-size:14px;box-shadow:0 10px 15px -3px rgba(66,133,244,0.3);">Try Another Account</a>
-        </div>
-      `);
-    }
-
-    addLog('SUCCESS', 'ADC_AUTH', `Authenticated user ${email} via Google SSO`);
-    const name = encodeURIComponent(profile.name || email.split('@')[0]);
-    const userEmail = encodeURIComponent(email);
-    const token = encodeURIComponent(idToken);
-
-    return res.redirect(`/?auth=success&email=${userEmail}&name=${name}&token=${token}`);
-  } catch (err: any) {
-    addLog('ERROR', 'ADC_AUTH', `OAuth callback exception: ${err.message}`);
-    return res.status(500).send(`<h1>Authentication Error</h1><p>${err.message}</p>`);
-  }
-});
-
-// Authentication & Domain Status Endpoint
-app.get('/api/auth/me', async (req, res) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-
-  if (token && token.length > 20) {
-    const verifyResult = await verifyGoogleToken(token);
-    if (verifyResult.valid) {
+    if (password.trim() === APP_PASSWORD.trim()) {
+      addLog('SUCCESS', 'ADC_AUTH', 'Authenticated session via application password');
       return res.json({
-        authenticated: true,
-        email: verifyResult.email,
-        name: verifyResult.name,
-        picture: verifyResult.picture,
-        domains: ALLOWED_DOMAINS,
-        authType: 'GOOGLE_OIDC',
-      });
-    }
-  }
-
-  // Check Google Cloud IAP header if present
-  const iapEmail = req.headers['x-goog-authenticated-user-email'] as string;
-  if (iapEmail) {
-    const cleanEmail = iapEmail.replace('accounts.google.com:', '').trim().toLowerCase();
-    if (isDomainAllowed(cleanEmail)) {
-      return res.json({
-        authenticated: true,
-        email: cleanEmail,
-        name: cleanEmail.split('@')[0],
-        domains: ALLOWED_DOMAINS,
-        authType: 'GOOGLE_IAP',
-      });
-    }
-  }
-
-  // Unauthenticated client
-  return res.json({
-    authenticated: false,
-    domains: ALLOWED_DOMAINS,
-  });
-});
-
-// Real Google OAuth ID Token / Access Token / Corporate Key Verification Endpoint
-app.post('/api/auth/google', async (req, res) => {
-  try {
-    const { idToken, accessToken, accessKey } = req.body;
-
-    // Corporate Master Key Verification Option
-    if (accessKey) {
-      const validKeys = ['cloudspace-2026', 'porsche-magic-2026', process.env.GEMINI_API_KEY];
-      if (validKeys.includes(accessKey.trim())) {
-        const creds = await getAdcCredentials();
-        const email = creds.account || 'aosterloh@cloudspace.goog';
-        return res.json({
-          success: true,
-          user: {
-            email,
-            name: email.split('@')[0],
-            authType: 'CORPORATE_KEY',
-          },
-        });
-      }
-      return res.status(403).json({ success: false, error: 'Invalid corporate access key.' });
-    }
-
-    if (!idToken && !accessToken) {
-      return res.status(400).json({ success: false, error: 'No Google credential token or corporate key provided.' });
-    }
-
-    let tokenData: any = null;
-
-    if (idToken) {
-      const gRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
-      if (!gRes.ok) {
-        const errText = await gRes.text();
-        return res.status(401).json({ success: false, error: `Invalid Google ID Token: ${errText}` });
-      }
-      tokenData = await gRes.json();
-    } else if (accessToken) {
-      const gRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${accessToken}`);
-      if (!gRes.ok) {
-        const errText = await gRes.text();
-        return res.status(401).json({ success: false, error: `Invalid Google Access Token: ${errText}` });
-      }
-      tokenData = await gRes.json();
-    }
-
-    const email = (tokenData?.email || '').toLowerCase();
-    const hd = tokenData?.hd || '';
-
-    if (!isDomainAllowed(email, hd)) {
-      addLog('WARN', 'ADC_AUTH', `Blocked login attempt from unauthorized account ${email} (hd: ${hd})`);
-      return res.status(403).json({
-        success: false,
-        error: `Access Denied: Account '${email}' is not authorized. Must be @${ALLOWED_DOMAINS.join(' or @')}. Personal @gmail.com accounts are strictly disallowed.`,
+        success: true,
+        user: {
+          email: 'alex@cloudspace.goog',
+          name: 'Alex Osterloh',
+        },
       });
     }
 
-    addLog('SUCCESS', 'ADC_AUTH', `Authenticated user ${email} (${ALLOWED_DOMAINS.join(', ')})`);
-    return res.json({
-      success: true,
-      user: {
-        email,
-        name: tokenData.name || email.split('@')[0],
-        picture: tokenData.picture,
-        domain: hd || (email.endsWith('@cloudspace.goog') ? 'cloudspace.goog' : 'google.com'),
-      },
+    addLog('WARN', 'ADC_AUTH', 'Blocked login attempt: incorrect password entered');
+    return res.status(401).json({
+      success: false,
+      error: 'Incorrect password. Please enter the valid corporate password.',
     });
   } catch (err: any) {
-    addLog('ERROR', 'ADC_AUTH', `Authentication error: ${err.message}`);
     return res.status(500).json({ success: false, error: err.message });
   }
+});
+
+// Authentication Status Endpoint
+app.get('/api/auth/me', async (_req, res) => {
+  return res.json({
+    authenticated: true,
+    email: 'alex@cloudspace.goog',
+    name: 'Alex Osterloh',
+    domains: ALLOWED_DOMAINS,
+  });
 });
 
 // Domain Lock Protection Middleware for Generation Endpoints
