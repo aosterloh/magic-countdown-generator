@@ -358,7 +358,7 @@
         The system employs a streamlined, secure password gate that protects all generation endpoints without external OAuth redirect dependencies:
       </p>
       <ul>
-        <li><strong>Environment Variable Configuration:</strong> Protected by <code>APP_PASSWORD</code> (default: <code></code>) configured in <code>.env</code> and GCP Cloud Run environment variables.</li>
+        <li><strong>Environment Variable Configuration:</strong> Protected by the secure <code>APP_PASSWORD</code> secret injected via GCP Cloud Run environment variables / Secret Manager.</li>
         <li><strong>Endpoint Protection:</strong> <code>POST /api/auth/password</code> verifies submitted passwords with constant-time equality checks and returns an authenticated session token.</li>
         <li><strong>Header Cleanliness:</strong> UI removes unnecessary user profile clutter from the top-right header, focusing exclusively on theme controls and core creative workflow.</li>
       </ul>
@@ -485,7 +485,7 @@ Response (200 OK):
       <ul>
         <li>&#9745; <strong>Clean Header:</strong> Top-right user profile removed; clean theme toggle preserved.</li>
         <li>&#9745; <strong>Dual Advance Buttons:</strong> Prominent "Approve All 10 Images" button active at both top and bottom of Stage 3.</li>
-        <li>&#9745; <strong>Password Protected:</strong> <code>APP_PASSWORD=</code> enforces secure application access.</li>
+        <li>&#9745; <strong>Password Protected:</strong> <code>APP_PASSWORD</code> environment variable securely enforces access control.</li>
         <li>&#9745; <strong>14/14 Automated Tests Passing:</strong> Temporal math, prompt builder, and FFmpeg command compilation fully verified.</li>
         <li>&#9745; <strong>Cloud Run Deployed:</strong> High-performance Node/Express/Vite container serving 100% of traffic in <code>europe-west3</code>.</li>
       </ul>
