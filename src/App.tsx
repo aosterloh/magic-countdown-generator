@@ -421,14 +421,23 @@ export const App: React.FC = () => {
     }
   };
 
-  // 3. Generate Veo 3 Video for single slot (No Audio)
-  const handleGenerateVideoForSlot = async (slotIndex: number) => {
+  // Active Parallel Video Workers State (tracks which 2 slots are actively being synthesized)
+  const [activeVideoSlots, setActiveVideoSlots] = useState<{ workerId: number; slotIndex: number; concept: string }[]>([]);
+  const [isBatchGeneratingVideos, setIsBatchGeneratingVideos] = useState(false);
+
+  // 3. Generate Veo 3 Video for single slot (No Audio, 4.0s @ 60fps)
+  const handleGenerateVideoForSlot = async (slotIndex: number, workerId: number = 1) => {
     const targetSlot = slots.find((s) => s.index === slotIndex);
     if (!targetSlot?.currentImageUri) return;
 
     setSlots((prev) =>
-      prev.map((s) => (s.index === slotIndex ? { ...s, isVideoLoading: true, videoError: null } : s))
+      prev.map((s) => (s.index === slotIndex ? { ...s, isVideoLoading: true, activeWorkerId: workerId, videoError: null } : s))
     );
+
+    setActiveVideoSlots((prev) => [
+      ...prev.filter((w) => w.workerId !== workerId),
+      { workerId, slotIndex, concept: targetSlot.sceneConcept || `Shot #${slotIndex}` },
+    ]);
 
     try {
       const res = await fetch(`${API_BASE}/api/generate-video`, {
@@ -443,24 +452,45 @@ export const App: React.FC = () => {
 
       if (data.success && data.rawVideoUri) {
         setSlots((prev) =>
-          prev.map((s) => (s.index === slotIndex ? { ...s, rawVideoUri: data.rawVideoUri, isVideoLoading: false } : s))
+          prev.map((s) =>
+            s.index === slotIndex
+              ? { ...s, rawVideoUri: data.rawVideoUri, isVideoLoading: false, activeWorkerId: null }
+              : s
+          )
         );
       }
     } catch (err: any) {
       setSlots((prev) =>
-        prev.map((s) => (s.index === slotIndex ? { ...s, isVideoLoading: false, videoError: err.message } : s))
+        prev.map((s) =>
+          s.index === slotIndex ? { ...s, isVideoLoading: false, activeWorkerId: null, videoError: err.message } : s
+        )
       );
+    } finally {
+      setActiveVideoSlots((prev) => prev.filter((w) => w.workerId !== workerId));
     }
   };
 
   // Batch Generate all 10 Veo 3 videos (2 parallel workers)
   const handleGenerateAllVideos = async () => {
     setCurrentStage(4);
+    setIsBatchGeneratingVideos(true);
     const slotsWithImages = [...slots].filter((s) => Boolean(s.currentImageUri));
-    await runWorkerPool(slotsWithImages, 2, async (s) => {
-      await handleGenerateVideoForSlot(s.index);
-      return true;
-    });
+    const sorted = [...slotsWithImages].sort((a, b) => b.diegeticNumber - a.diegeticNumber);
+
+    let cursor = 0;
+    const worker = async (workerId: number) => {
+      while (cursor < sorted.length) {
+        const itemIndex = cursor++;
+        const s = sorted[itemIndex];
+        if (!s) break;
+        await handleGenerateVideoForSlot(s.index, workerId);
+      }
+    };
+
+    const workerCount = Math.min(2, sorted.length);
+    await Promise.all(Array.from({ length: workerCount }, (_, i) => worker(i + 1)));
+    setIsBatchGeneratingVideos(false);
+    setActiveVideoSlots([]);
   };
 
   // 4. Update Temporal Config for Slot
@@ -718,18 +748,21 @@ export const App: React.FC = () => {
 
         {/* STAGE 4: Veo 3 Video Generation Banner & Action */}
         {currentStage >= 4 && (
-          <section className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-900/40 shadow-xl space-y-4 animate-fadeIn">
-            <div className="flex items-center justify-between">
+          <section className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-900/40 shadow-xl space-y-6 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400">
                   <Video className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Stage 4: Veo 3 Image-to-Video Synthesis (10 $\times$ 4.0s)
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>Stage 4: Veo 3 Image-to-Video Synthesis (10 $\times$ 4.0s)</span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                      {videosCompletedCount}/10 Videos Ready
+                    </span>
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Generates 4-second cinematic clips without audio ({videosCompletedCount}/10 ready).
+                    Generates 4.0-second 16:9 widescreen 60fps cinematic clips with camera motion reveal.
                   </p>
                 </div>
               </div>
@@ -737,12 +770,84 @@ export const App: React.FC = () => {
               <button
                 type="button"
                 onClick={handleGenerateAllVideos}
-                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xl shadow-purple-600/20 transition-all hover:scale-105"
+                disabled={isBatchGeneratingVideos}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-bold shadow-xl shadow-purple-600/20 transition-all hover:scale-105"
               >
-                <Sparkles className="w-4 h-4" />
-                <span>{allVideosReady ? 'Re-render All 10 Videos' : 'Generate All 10 Veo Videos (2 Workers)'}</span>
+                <Sparkles className={`w-4 h-4 ${isBatchGeneratingVideos ? 'animate-spin' : ''}`} />
+                <span>
+                  {isBatchGeneratingVideos
+                    ? 'Synthesizing with 2 Parallel Workers...'
+                    : allVideosReady
+                    ? 'Re-render All 10 Videos'
+                    : 'Generate All 10 Veo Videos (2 Workers)'}
+                </span>
               </button>
             </div>
+
+            {/* Parallel Worker Live Animation Dashboard */}
+            {isBatchGeneratingVideos && (
+              <div className="p-5 rounded-2xl bg-slate-950 border border-purple-500/40 shadow-2xl space-y-3">
+                <div className="flex items-center justify-between text-xs font-mono font-bold text-purple-300 border-b border-slate-800 pb-2.5">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-ping" />
+                    <span>2 PARALLEL VEO 3 VIDEO SYNTHESIS CORES RUNNING</span>
+                  </span>
+                  <span className="text-slate-400">{videosCompletedCount} of 10 Complete</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {/* Worker 1 */}
+                  {(() => {
+                    const w1 = activeVideoSlots.find((w) => w.workerId === 1);
+                    return (
+                      <div className={`p-4 rounded-xl border transition-all ${
+                        w1
+                          ? 'bg-purple-950/40 border-purple-500/60 shadow-lg shadow-purple-500/20 ring-1 ring-purple-500/30 animate-pulse'
+                          : 'bg-slate-900/60 border-slate-800 text-slate-500'
+                      }`}>
+                        <div className="flex items-center justify-between text-[11px] font-mono font-bold mb-1">
+                          <span className="text-purple-300 flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full ${w1 ? 'bg-purple-400 animate-ping' : 'bg-slate-600'}`} />
+                            <span>Worker Alpha (Core 1)</span>
+                          </span>
+                          <span className="px-2 py-0.5 rounded bg-purple-900/60 text-purple-200 text-[10px]">
+                            {w1 ? `Synthesizing Shot #${w1.slotIndex}` : 'Idle'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-200 font-medium truncate mt-1">
+                          {w1 ? w1.concept : 'Waiting for next slot in queue...'}
+                        </p>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Worker 2 */}
+                  {(() => {
+                    const w2 = activeVideoSlots.find((w) => w.workerId === 2);
+                    return (
+                      <div className={`p-4 rounded-xl border transition-all ${
+                        w2
+                          ? 'bg-blue-950/40 border-blue-500/60 shadow-lg shadow-blue-500/20 ring-1 ring-blue-500/30 animate-pulse'
+                          : 'bg-slate-900/60 border-slate-800 text-slate-500'
+                      }`}>
+                        <div className="flex items-center justify-between text-[11px] font-mono font-bold mb-1">
+                          <span className="text-blue-300 flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full ${w2 ? 'bg-blue-400 animate-ping' : 'bg-slate-600'}`} />
+                            <span>Worker Beta (Core 2)</span>
+                          </span>
+                          <span className="px-2 py-0.5 rounded bg-blue-900/60 text-blue-200 text-[10px]">
+                            {w2 ? `Synthesizing Shot #${w2.slotIndex}` : 'Idle'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-200 font-medium truncate mt-1">
+                          {w2 ? w2.concept : 'Waiting for next slot in queue...'}
+                        </p>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
           </section>
         )}
 

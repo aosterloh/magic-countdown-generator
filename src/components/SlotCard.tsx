@@ -55,7 +55,9 @@ export const SlotCard: React.FC<SlotCardProps> = ({
   return (
     <div
       className={`w-full bg-white dark:bg-slate-900 border rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 transition-all duration-300 ${
-        slot.isImageAccepted
+        slot.isVideoLoading
+          ? 'border-purple-500 ring-2 ring-purple-500/40 shadow-2xl shadow-purple-500/20'
+          : slot.isImageAccepted
           ? 'border-[#34A853] ring-2 ring-[#34A853]/30 shadow-emerald-500/10'
           : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
       }`}
@@ -75,10 +77,16 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               <span className="text-xs font-mono font-bold text-[#4285F4] dark:text-blue-400 uppercase tracking-wider">
                 Shot #{slot.index} • Countdown {slot.diegeticNumber}
               </span>
-              {slot.isImageAccepted && (
+              {slot.isVideoLoading && (
+                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-300 border border-purple-300 dark:border-purple-800 text-[11px] font-bold animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-ping" />
+                  <span>⚡ Worker {slot.activeWorkerId ? `#${slot.activeWorkerId}` : 'Active'}: Synthesizing Veo 3 Video</span>
+                </span>
+              )}
+              {slot.rawVideoUri && (
                 <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#34A853] border border-emerald-200 dark:border-emerald-800 text-[11px] font-bold">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Approved
+                  Veo 3 Video Ready
                 </span>
               )}
             </div>
@@ -95,7 +103,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
       </div>
 
       {/* Center Media Showcase: Side-by-Side (30% Image / 70% Video) or Full-Width Image */}
-      {slot.rawVideoUri ? (
+      {slot.rawVideoUri || slot.isVideoLoading ? (
         <div className="grid grid-cols-1 lg:grid-cols-10 gap-4 items-stretch">
           {/* Left: Input Image (30% Width) */}
           <div className="lg:col-span-3 rounded-2xl bg-black border border-slate-200 dark:border-slate-800 overflow-hidden relative group flex flex-col justify-between p-2 shadow-inner">
@@ -114,33 +122,62 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             </div>
           </div>
 
-          {/* Right: Veo 3 Video Player (70% Width) */}
-          <div className="lg:col-span-7 rounded-2xl bg-black border border-purple-500/30 overflow-hidden relative flex flex-col justify-between p-2 shadow-xl">
+          {/* Right: Veo 3 Video Player or Live Synthesis Scanner (70% Width) */}
+          <div className={`lg:col-span-7 rounded-2xl bg-black border overflow-hidden relative flex flex-col justify-between p-2 shadow-xl ${
+            slot.isVideoLoading
+              ? 'border-purple-500 ring-2 ring-purple-500/30 shadow-purple-500/20'
+              : 'border-purple-500/30'
+          }`}>
             <div className="flex items-center justify-between px-2 py-1 z-10">
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-purple-900/90 text-purple-200 border border-purple-700 flex items-center gap-1">
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-purple-900/90 text-purple-200 border border-purple-700 flex items-center gap-1.5">
                 <Video className="w-3 h-3 text-purple-400" />
-                <span>Veo 3 Reveal Video (70% Focus)</span>
+                <span>{slot.isVideoLoading ? `⚡ Worker ${slot.activeWorkerId ? `#${slot.activeWorkerId}` : '1'} Active` : 'Veo 3 Reveal Video (70% Focus)'}</span>
               </span>
-              <button
-                type="button"
-                onClick={() => onPlayVideo(slot.rawVideoUri!)}
-                className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-950/60 px-2 py-0.5 rounded-lg border border-purple-800"
-              >
-                <Play className="w-3 h-3 fill-current" />
-                <span>Fullscreen</span>
-              </button>
+              {slot.rawVideoUri && (
+                <button
+                  type="button"
+                  onClick={() => onPlayVideo(slot.rawVideoUri!)}
+                  className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-950/60 px-2 py-0.5 rounded-lg border border-purple-800"
+                >
+                  <Play className="w-3 h-3 fill-current" />
+                  <span>Fullscreen</span>
+                </button>
+              )}
             </div>
-            <div className="aspect-video w-full rounded-xl overflow-hidden bg-black flex items-center justify-center">
-              <video
-                src={videoUrl}
-                autoPlay
-                loop
-                muted
-                playsInline
-                controls
-                className="w-full h-full object-cover"
-              />
-            </div>
+
+            {slot.isVideoLoading ? (
+              <div className="aspect-video w-full rounded-xl bg-slate-950/90 border border-purple-500/40 relative overflow-hidden flex flex-col items-center justify-center p-6 text-center shadow-inner">
+                <div className="relative z-10 space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/50 flex items-center justify-center text-purple-400 mx-auto shadow-lg shadow-purple-500/25 animate-bounce">
+                    <Sparkles className="w-6 h-6 animate-spin" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-mono font-bold text-purple-300 uppercase tracking-widest block flex items-center justify-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
+                      <span>Worker {slot.activeWorkerId ? `#${slot.activeWorkerId}` : '1'} Synthesizing Veo 3 Video</span>
+                    </span>
+                    <p className="text-xs text-slate-300 font-medium mt-1">
+                      Rendering 4.0s @ 60fps 16:9 cinematic camera motion reveal...
+                    </p>
+                  </div>
+                  <div className="w-56 h-1.5 bg-slate-800 rounded-full overflow-hidden mx-auto">
+                    <div className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-400 animate-pulse w-full" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="aspect-video w-full rounded-xl overflow-hidden bg-black flex items-center justify-center">
+                <video
+                  src={videoUrl}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  controls
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
           </div>
         </div>
       ) : (

@@ -42,6 +42,7 @@ export interface CountdownSlot {
   // Video Generation State
   rawVideoUri: string | null; // 4.0s raw Veo output
   isVideoLoading: boolean;
+  activeWorkerId?: number | null;
   videoError: string | null;
 
   // Temporal Alignment
