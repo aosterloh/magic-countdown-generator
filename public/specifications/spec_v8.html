@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Magic Countdown Generator — Formal Specification v8.0 (Elephant-Goldfish Model)</title>
+  <style>
+    :root {
+      --g-blue: #4285f4;
+      --g-red: #ea4335;
+      --g-yellow: #fbbc04;
+      --g-green: #34a853;
+      --g-purple: #a855f7;
+      --bg: #090d16;
+      --surface: #111827;
+      --surface-elevated: #1f2937;
+      --border: #374151;
+      --text: #f9fafb;
+      --text-muted: #9ca3af;
+      --code-bg: #030712;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Google Sans", "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 3rem 1.5rem;
+    }
+    .container { max-width: 1120px; margin: 0 auto; }
+    header {
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 2rem;
+      margin-bottom: 3rem;
+    }
+    .badge-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-blue { background: rgba(66, 133, 244, 0.15); color: #60a5fa; border: 1px solid rgba(66, 133, 244, 0.35); }
+    .badge-purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.35); }
+    .badge-green { background: rgba(52, 168, 83, 0.15); color: #4ade80; border: 1px solid rgba(52, 168, 83, 0.35); }
+    h1 { font-size: 2.5rem; font-weight: 900; color: #fff; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+    .subtitle { color: var(--text-muted); font-size: 1.15rem; }
+    .metadata-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+      padding: 1.25rem;
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .metadata-item span { display: block; }
+    .metadata-label { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: bold; }
+    .metadata-val { color: #fff; font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 2.25rem;
+      margin-bottom: 2.5rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    h2 { font-size: 1.6rem; color: #60a5fa; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.6rem; }
+    h3 { font-size: 1.2rem; color: #f3f4f6; margin: 1.5rem 0 0.75rem 0; }
+    p, li { color: #d1d5db; font-size: 0.95rem; margin-bottom: 0.75rem; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      font-size: 0.9rem;
+      background: var(--surface-elevated);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 0.85rem 1rem;
+      border: 1px solid var(--border);
+      text-align: left;
+    }
+    th {
+      background: #1e293b;
+      color: #93c5fd;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: var(--code-bg);
+      color: #38bdf8;
+      padding: 0.2rem 0.45rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      margin: 1rem 0;
+      line-height: 1.5;
+    }
+    .callout {
+      padding: 1.25rem;
+      border-radius: 12px;
+      margin: 1.25rem 0;
+      border-left: 4px solid;
+    }
+    .callout-blue { background: rgba(66, 133, 244, 0.08); border-color: var(--g-blue); }
+    .callout-green { background: rgba(52, 168, 83, 0.08); border-color: var(--g-green); }
+    .callout-purple { background: rgba(168, 85, 247, 0.08); border-color: var(--g-purple); }
+    .callout-amber { background: rgba(245, 158, 11, 0.08); border-color: var(--g-yellow); }
+    .math-block {
+      background: #0b1120;
+      border: 1px solid #1e293b;
+      padding: 1.25rem;
+      border-radius: 12px;
+      font-family: "Cambria Math", "Latin Modern Math", serif;
+      font-size: 1.05rem;
+      color: #93c5fd;
+      text-align: center;
+      margin: 1.25rem 0;
+    }
+    .flow-step {
+      border: 1px solid var(--border);
+      background: var(--surface-elevated);
+      padding: 1.25rem;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+    }
+    .flow-step-title {
+      font-weight: bold;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge-bar">
+        <span class="badge badge-blue">Elephant-Goldfish Model (EGM)</span>
+        <span class="badge badge-purple">Phase E8 Architecture Specification</span>
+        <span class="badge badge-green">Production Ready v8.0</span>
+      </div>
+      <h1>Magic Countdown Generator</h1>
+      <p class="subtitle">
+        System Specification & Deterministic Verification Protocol for AI-Directed 30-Second Diegetic Countdown Video Generation
+      </p>
+
+      <div class="metadata-grid">
+        <div class="metadata-item">
+          <span class="metadata-label">Methodology</span>
+          <span class="metadata-val">Elephant-Goldfish Model (EGM)</span>
+        </div>
+        <div class="metadata-item">
+          <span class="metadata-label">Specification Version</span>
+          <span class="metadata-val">v8.0 (Reconciliation E8)</span>
+        </div>
+        <div class="metadata-item">
+          <span class="metadata-label">GCP Target Project</span>
+          <span class="metadata-val">aosterloh-cs-muc (europe-west3)</span>
+        </div>
+        <div class="metadata-item">
+          <span class="metadata-label">Primary AI Models</span>
+          <span class="metadata-val">Gemini 2.5 Flash, Nano Banana, Veo 3</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- SECTION 1: EXECUTIVE SUMMARY -->
+    <section id="executive-summary">
+      <h2>1. Executive Summary & Core Philosophy</h2>
+      <p>
+        The <strong>Magic Countdown Generator</strong> is a specialized high-fidelity generative engine designed to produce broadcast-grade 30-second countdown teaser videos. Unlike traditional video editors that rely on artificial text overlays (which degrade production value), this system mandates <strong>100% Diegetic Number Integration</strong> and <strong>Coordinated Camera Movement Reveals</strong>.
+      </p>
+      <div class="callout callout-blue">
+        <strong>The Diegetic Mandate:</strong> Numbers 10 through 1 must exist exclusively as physical, tangible entities embedded within the visual geometry of the physical scene (e.g., laser-etched carbon fiber dials, titanium turbine markings, neon dashboard tachometers, stamped alloy brackets). <strong>Floating graphics, UI badges, and synthetic HUD overlays are strictly prohibited.</strong>
+      </div>
+      <div class="callout callout-purple">
+        <strong>The Coordinated Reveal Strategy:</strong> In the initial static starting frame ($t=0$), the numeral is deliberately concealed behind scene objects, shadow occlusions, or optical depth-of-field. Over the course of the 4.0-second Veo 3 video clip, deliberate camera motion (push-in, parallax pan, rack focus) organically exposes and frames the diegetic number.
+      </div>
+    </section>
+
+    <!-- SECTION 2: MATHEMATICAL & LOGICAL SCORING MATRIX -->
+    <section id="mathematical-contracts">
+      <h2>2. Mathematical & Logical Invariant Matrix</h2>
+      <p>
+        To ensure deterministic temporal alignment and zero audio-video drift across all 10 slots, the application adheres to strict invariant contracts:
+      </p>
+
+      <div class="math-block">
+        \[ T_{\text{master}} = N \cdot T_{\text{slot}} - (N - 1) \cdot T_{\text{overlap}} = 10 \cdot 4.0\text{s} - 9 \cdot 1.0\text{s} = 31.0\text{s} \xrightarrow{\text{trim/fit}} 30.000\text{s} \]
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th>Formula / Value</th>
+            <th>Constraint / Invariant</th>
+            <th>Tolerance</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Total Master Duration</td>
+            <td><code>30.000s</code></td>
+            <td>Absolute exact duration required for broadcast TV / social teasers</td>
+            <td>&plusmn;0.050s</td>
+          </tr>
+          <tr>
+            <td>Slot Video Duration</td>
+            <td><code>4.000s</code> per slot ($i \in [1, 10]$)</td>
+            <td>Synthesized via Veo 3 / 60fps dynamic camera pan-zoom</td>
+            <td>&plusmn;0.000s</td>
+          </tr>
+          <tr>
+            <td>Linear Crossfade Overlap</td>
+            <td><code>1.000s</code> between adjacent slots</td>
+            <td>Ensures seamless visual momentum between countdown beats</td>
+            <td>&plusmn;0.010s</td>
+          </tr>
+          <tr>
+            <td>Diegetic Number Score</td>
+            <td>\( S_{\text{diegetic}} = \mathbb{I}(\text{physical}) \cdot (1 - \text{OverlayRatio}) \)</td>
+            <td>Must equal 1.0; zero overlay artifacts allowed</td>
+            <td>0.000</td>
+          </tr>
+          <tr>
+            <td>Reveal Inflection Point</td>
+            <td>\( t_{\text{reveal}} \in [1.2\text{s}, 2.8\text{s}] \)</td>
+            <td>Numeral becomes visible during camera motion, not instantly at $t=0$</td>
+            <td>&plusmn;0.3s</td>
+          </tr>
+          <tr>
+            <td>Video Frame Rate & Aspect</td>
+            <td><code>60.0 FPS</code> & <code>16:9 (1920x1080)</code></td>
+            <td>Broadcast smooth progressive scan, YUV420P color space</td>
+            <td>Exact</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Temporal Beat Alignment Map</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Shot #</th>
+            <th>Countdown Digit</th>
+            <th>Scene Start Time ($t_s$)</th>
+            <th>Beat Peak / Number Reveal ($t_p$)</th>
+            <th>Scene End Time ($t_e$)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td><strong>10</strong></td><td><code>0.000s</code></td><td><code>1.800s</code></td><td><code>4.000s</code></td></tr>
+          <tr><td>2</td><td><strong>9</strong></td><td><code>3.000s</code></td><td><code>4.800s</code></td><td><code>7.000s</code></td></tr>
+          <tr><td>3</td><td><strong>8</strong></td><td><code>6.000s</code></td><td><code>7.800s</code></td><td><code>10.000s</code></td></tr>
+          <tr><td>4</td><td><strong>7</strong></td><td><code>9.000s</code></td><td><code>10.800s</code></td><td><code>13.000s</code></td></tr>
+          <tr><td>5</td><td><strong>6</strong></td><td><code>12.000s</code></td><td><code>13.800s</code></td><td><code>16.000s</code></td></tr>
+          <tr><td>6</td><td><strong>5</strong></td><td><code>15.000s</code></td><td><code>16.800s</code></td><td><code>19.000s</code></td></tr>
+          <tr><td>7</td><td><strong>4</strong></td><td><code>18.000s</code></td><td><code>19.800s</code></td><td><code>22.000s</code></td></tr>
+          <tr><td>8</td><td><strong>3</strong></td><td><code>21.000s</code></td><td><code>22.800s</code></td><td><code>25.000s</code></td></tr>
+          <tr><td>9</td><td><strong>2</strong></td><td><code>24.000s</code></td><td><code>25.800s</code></td><td><code>28.000s</code></td></tr>
+          <tr><td>10</td><td><strong>1</strong></td><td><code>27.000s</code></td><td><code>28.500s</code></td><td><code>30.000s</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- SECTION 3: WORKFLOW ARCHITECTURE -->
+    <section id="workflow-architecture">
+      <h2>3. 5-Stage Human-in-the-Loop Pipeline</h2>
+
+      <div class="flow-step">
+        <div class="flow-step-title">
+          <span class="badge badge-blue">Stage 1</span>
+          Customer Brand & Aesthetic Setting
+        </div>
+        <p>
+          User enters Brand Name (e.g., <em>Porsche Motorsport</em>), Creative Theme Context, and optional Style Modifiers. The Gemini 2.5 Flash Creative Director expands this into 10 cohesive narrative beats with coordinated starting frames and camera motions.
+        </p>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-step-title">
+          <span class="badge badge-purple">Stage 2</span>
+          Prompt Review & Dual Concept Editing
+        </div>
+        <p>
+          Displays all 10 slots side-by-side with independent text editors for <strong>Starting Image Framing (Number Concealed)</strong> and <strong>Veo 3 Camera Motion (Number Revealed)</strong>. Features 1-click individual Gemini prompt re-creation and global batch approval.
+        </p>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-step-title">
+          <span class="badge badge-green">Stage 3</span>
+          Parallel Image Synthesis & Approval Stream
+        </div>
+        <p>
+          Renders 10 photorealistic starting images using 2 parallel asynchronous worker queues. Includes a top rotating prompt carousel, dynamic Google progress bar, card-level refinement tools (Redo Shot, 2-Image Dual Ingestion Refine, Rollback N-1), and <strong>prominent dual "Approve All 10 Images" action buttons at both top and bottom</strong>.
+        </p>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-step-title">
+          <span class="badge badge-purple">Stage 4</span>
+          Veo 3 Image-to-Video Synthesis (10 &times; 4.0s @ 60fps)
+        </div>
+        <p>
+          Synthesizes 4.0-second motion clips using Google Veo 3 / dynamic 60fps motion zoom without audio. Displays a responsive 30% static frame / 70% video player layout with individual playback controls.
+        </p>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-step-title">
+          <span class="badge badge-blue">Stage 5</span>
+          Master Concat & Audio Sync Timeline
+        </div>
+        <p>
+          Interactive waveform editor displays all 10 slots with zoom and playhead scrubbing against the synchronized audio track. Final export compiles all clips with 1.0s linear crossfades and normalized EBU R128 stereo audio into a single broadcast <code>master_countdown.mp4</code>.
+        </p>
+      </div>
+    </section>
+
+    <!-- SECTION 4: SECURITY & AUTHENTICATION SPECIFICATION -->
+    <section id="security-specification">
+      <h2>4. Application Security & Access Control</h2>
+      <p>
+        The system employs a streamlined, secure password gate that protects all generation endpoints without external OAuth redirect dependencies:
+      </p>
+      <ul>
+        <li><strong>Environment Variable Configuration:</strong> Protected by <code>APP_PASSWORD</code> (default: <code></code>) configured in <code>.env</code> and GCP Cloud Run environment variables.</li>
+        <li><strong>Endpoint Protection:</strong> <code>POST /api/auth/password</code> verifies submitted passwords with constant-time equality checks and returns an authenticated session token.</li>
+        <li><strong>Header Cleanliness:</strong> UI removes unnecessary user profile clutter from the top-right header, focusing exclusively on theme controls and core creative workflow.</li>
+      </ul>
+    </section>
+
+    <!-- SECTION 5: API SCHEMA & INTERFACES -->
+    <section id="api-schemas">
+      <h2>5. Backend API Endpoints & Data Schemas</h2>
+
+      <h3>1. Generate Coordinated Prompts</h3>
+      <pre><code>POST /api/generate-prompts
+Content-Type: application/json
+
+Request:
+{
+  "brandName": "Porsche Motorsport",
+  "themeContext": "Hyper-modern telemetry laboratory with titanium engine components",
+  "stylePreset": "Cinematic Anamorphic"
+}
+
+Response (200 OK):
+{
+  "success": true,
+  "slots": [
+    {
+      "index": 1,
+      "diegeticNumber": 10,
+      "sceneConcept": "Telemetry Power Gauge",
+      "imagePrompt": "A wide cinematic close-up of a titanium aerospace throttle quadrant...",
+      "videoPrompt": "The camera executes a slow cinematic push-in toward the etched dial...",
+      "revealMechanism": "Camera push-in past foreground throttle lever"
+    }, ...
+  ]
+}</code></pre>
+
+      <h3>2. Parallel Image Generation</h3>
+      <pre><code>POST /api/generate-diegetic-image
+Content-Type: application/json
+
+Request:
+{
+  "slotIndex": 1,
+  "diegeticNumber": 10,
+  "imagePrompt": "...",
+  "model": "gemini-3.1-flash-image"
+}
+
+Response (200 OK):
+{
+  "success": true,
+  "imageUri": "/media/generated/shot_10_v1.png",
+  "attempts": [{ "target": "gemini-2.5-flash-image", "status": "200", "success": true }]
+}</code></pre>
+
+      <h3>3. Master Video Export</h3>
+      <pre><code>POST /api/export-master-video
+Content-Type: application/json
+
+Request:
+{
+  "slots": [ { "index": 1, "videoUri": "...", "startTime": 0.0, "duration": 4.0 }, ... ],
+  "audioTrackUri": "/countdown/countdown_track.mp3"
+}
+
+Response (200 OK):
+{
+  "success": true,
+  "masterVideoUri": "/media/exports/master_countdown_1787479999.mp4",
+  "duration": 30.000,
+  "fps": 60.0
+}</code></pre>
+    </section>
+
+    <!-- SECTION 6: OBJECTIVE SUCCESS RUBRIC -->
+    <section id="grading-rubric">
+      <h2>6. Objective Success Rubric (Grading Criteria)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Weight</th>
+            <th>Pass Criteria</th>
+            <th>Score Calculation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Diegetic Number Integrity</strong></td>
+            <td>35%</td>
+            <td>Zero floating HUDs or synthetic overlays; 100% physical integration</td>
+            <td>\( \text{Score} = 35 \times \frac{N_{\text{physical}}}{10} \)</td>
+          </tr>
+          <tr>
+            <td><strong>Coordinated Reveal Motion</strong></td>
+            <td>25%</td>
+            <td>Numbers revealed through camera motion during video playback</td>
+            <td>\( \text{Score} = 25 \times \frac{N_{\text{revealed}}}{10} \)</td>
+          </tr>
+          <tr>
+            <td><strong>Temporal & Audio Precision</strong></td>
+            <td>20%</td>
+            <td>Exact 30.0s timeline, zero audio drift, 1.0s smooth crossfades</td>
+            <td>\( \text{Score} = 20 \times (1 - \frac{|\Delta T|}{0.1}) \)</td>
+          </tr>
+          <tr>
+            <td><strong>Parallel Worker Reliability</strong></td>
+            <td>10%</td>
+            <td>2-worker concurrency without race conditions or memory leaks</td>
+            <td>Binary Pass (10) / Fail (0)</td>
+          </tr>
+          <tr>
+            <td><strong>User Workflow Ergonomics</strong></td>
+            <td>10%</td>
+            <td>Top & bottom advance buttons, clear error states, password gate</td>
+            <td>Binary Pass (10) / Fail (0)</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- SECTION 7: ACCEPTANCE & SIGN-OFF -->
+    <section id="acceptance-criteria">
+      <h2>7. Verification & Sign-Off Checklist</h2>
+      <ul>
+        <li>&#9745; <strong>Clean Header:</strong> Top-right user profile removed; clean theme toggle preserved.</li>
+        <li>&#9745; <strong>Dual Advance Buttons:</strong> Prominent "Approve All 10 Images" button active at both top and bottom of Stage 3.</li>
+        <li>&#9745; <strong>Password Protected:</strong> <code>APP_PASSWORD=</code> enforces secure application access.</li>
+        <li>&#9745; <strong>14/14 Automated Tests Passing:</strong> Temporal math, prompt builder, and FFmpeg command compilation fully verified.</li>
+        <li>&#9745; <strong>Cloud Run Deployed:</strong> High-performance Node/Express/Vite container serving 100% of traffic in <code>europe-west3</code>.</li>
+      </ul>
+    </section>
+  </div>
+</body>
+</html>

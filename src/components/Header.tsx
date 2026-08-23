@@ -132,13 +132,13 @@ export const Header: React.FC<HeaderProps> = ({
               Magic Countdown Generator
             </h1>
             <a
-              href="/specifications/spec_v7.html"
+              href="/specifications/spec_v8.html"
               target="_blank"
               rel="noopener noreferrer"
               className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-50 dark:bg-blue-950 text-[#4285F4] hover:text-blue-700 dark:hover:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/60 flex items-center gap-1 transition-all shadow-sm"
               title="Open EGM Specification HTML"
             >
-              <span>EGM v7.0 Spec</span>
+              <span>EGM v8.0 Spec</span>
               <ExternalLink className="w-3 h-3" />
             </a>
           </div>
@@ -149,33 +149,6 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-3">
-        {/* Logged-In User Profile & Sign Out */}
-        {authUser && (
-          <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
-            <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm uppercase shrink-0">
-              {authUser.name ? authUser.name.charAt(0) : 'U'}
-            </div>
-            <div className="text-left hidden sm:block">
-              <div className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
-                {authUser.name || authUser.email.split('@')[0]}
-              </div>
-              <div className="text-[10px] font-mono text-blue-600 dark:text-blue-400 font-semibold leading-tight">
-                {authUser.email}
-              </div>
-            </div>
-            {onSignOut && (
-              <button
-                type="button"
-                onClick={onSignOut}
-                className="ml-1 text-[11px] font-semibold text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 px-2 py-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                title="Sign out of account"
-              >
-                Sign out
-              </button>
-            )}
-          </div>
-        )}
-
         {/* Light / Dark Mode Toggle Button */}
         <button
           type="button"
