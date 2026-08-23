@@ -206,6 +206,59 @@ app.get('/api/auth/me', async (req, res) => {
   });
 });
 
+// Real Google OAuth ID Token / Access Token Verification Endpoint
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { idToken, accessToken } = req.body;
+    if (!idToken && !accessToken) {
+      return res.status(400).json({ success: false, error: 'No Google credential token provided' });
+    }
+
+    let tokenData: any = null;
+
+    if (idToken) {
+      const gRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+      if (!gRes.ok) {
+        const errText = await gRes.text();
+        return res.status(401).json({ success: false, error: `Invalid Google ID Token: ${errText}` });
+      }
+      tokenData = await gRes.json();
+    } else if (accessToken) {
+      const gRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${accessToken}`);
+      if (!gRes.ok) {
+        const errText = await gRes.text();
+        return res.status(401).json({ success: false, error: `Invalid Google Access Token: ${errText}` });
+      }
+      tokenData = await gRes.json();
+    }
+
+    const email = (tokenData?.email || '').toLowerCase();
+    const hd = tokenData?.hd || '';
+
+    if (!isDomainAllowed(email, hd)) {
+      addLog('WARN', 'ADC_AUTH', `Blocked login attempt from unauthorized account ${email} (hd: ${hd})`);
+      return res.status(403).json({
+        success: false,
+        error: `Access Denied: Account '${email}' is not authorized. Must be @${ALLOWED_DOMAINS.join(' or @')}.`,
+      });
+    }
+
+    addLog('SUCCESS', 'ADC_AUTH', `Authenticated user ${email} (${ALLOWED_DOMAINS.join(', ')})`);
+    return res.json({
+      success: true,
+      user: {
+        email,
+        name: tokenData.name || email.split('@')[0],
+        picture: tokenData.picture,
+        domain: hd || (email.endsWith('@cloudspace.goog') ? 'cloudspace.goog' : 'google.com'),
+      },
+    });
+  } catch (err: any) {
+    addLog('ERROR', 'ADC_AUTH', `Authentication error: ${err.message}`);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Domain Lock Protection Middleware for Generation Endpoints
 async function requireCloudspaceDomain(req: express.Request, res: express.Response, next: express.NextFunction) {
   const authHeader = req.headers.authorization;

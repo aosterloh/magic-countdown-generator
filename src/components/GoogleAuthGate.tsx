@@ -1,153 +1,181 @@
-import React, { useState } from 'react';
-import { ShieldCheck, Lock, AlertCircle, Sparkles, CheckCircle2, ArrowRight, UserCheck } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Lock, AlertCircle, ShieldAlert, RefreshCw, LogIn } from 'lucide-react';
 
 interface GoogleAuthGateProps {
   onAuthenticate: (user: { email: string; name: string }) => void;
 }
 
+const API_BASE = window.location.port === '5173' ? 'http://localhost:3001' : '';
+const CLIENT_ID = '32555940559-q8kmhnepbvqm7u1g9b3p5q0b4d45p6k8.apps.googleusercontent.com'; // Standard Google Workspace Client
+
 export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({ onAuthenticate }) => {
-  const [inputEmail, setInputEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const googleBtnRef = useRef<HTMLDivElement>(null);
 
-  const ALLOWED_DOMAINS = ['cloudspace.goog', 'google.com'];
+  // Initialize Google Identity Services (GSI)
+  useEffect(() => {
+    const initGsi = () => {
+      if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
+        try {
+          (window as any).google.accounts.id.initialize({
+            client_id: CLIENT_ID,
+            callback: handleCredentialResponse,
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
 
-  const handleVerify = (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = inputEmail.trim().toLowerCase();
-    const isAllowed = ALLOWED_DOMAINS.some((d) => clean.endsWith(`@${d}`));
+          if (googleBtnRef.current) {
+            (window as any).google.accounts.id.renderButton(googleBtnRef.current, {
+              theme: 'filled_blue',
+              size: 'large',
+              width: 320,
+              text: 'signin_with',
+              shape: 'pill',
+            });
+          }
+        } catch (e) {
+          console.warn('GSI render notice:', e);
+        }
+      }
+    };
 
-    if (!isAllowed) {
-      setError(`Access Restricted: Only accounts from @cloudspace.goog or @google.com are authorized.`);
+    const timer = setTimeout(initGsi, 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Handle Google Credential Token from Google Identity
+  const handleCredentialResponse = async (response: any) => {
+    if (!response?.credential) {
+      setError('No credential received from Google.');
       return;
     }
+    await verifyWithBackend({ idToken: response.credential });
+  };
 
+  // Verify Token with Backend API
+  const verifyWithBackend = async (payload: { idToken?: string; accessToken?: string }) => {
     setIsVerifying(true);
     setError(null);
 
-    setTimeout(() => {
-      setIsVerifying(false);
-      onAuthenticate({
-        email: clean,
-        name: clean.split('@')[0],
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
-    }, 600);
+      const data = await res.json();
+
+      if (res.ok && data.success && data.user) {
+        onAuthenticate({
+          email: data.user.email,
+          name: data.user.name || data.user.email.split('@')[0],
+        });
+      } else {
+        setError(data.error || 'Access Denied: Account not authorized.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Network error communicating with authentication service.');
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
-  const handleQuickLogin = (email: string) => {
+  // Direct Google OAuth Popup Flow Fallback
+  const handleTriggerGoogleOAuth = () => {
     setIsVerifying(true);
-    setTimeout(() => {
-      setIsVerifying(false);
-      onAuthenticate({
-        email,
-        name: email.split('@')[0],
-      });
-    }, 400);
+    setError(null);
+
+    // Use Google Identity Token Client if available
+    if ((window as any).google?.accounts?.oauth2) {
+      try {
+        const client = (window as any).google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+          callback: async (tokenResponse: any) => {
+            if (tokenResponse?.access_token) {
+              await verifyWithBackend({ accessToken: tokenResponse.access_token });
+            } else {
+              setIsVerifying(false);
+              if (tokenResponse?.error) {
+                setError(`Google Sign-In error: ${tokenResponse.error}`);
+              }
+            }
+          },
+        });
+        client.requestAccessToken();
+        return;
+      } catch (e) {
+        console.warn('OAuth2 client init failed:', e);
+      }
+    }
+
+    // Fallback: Check Active Cloudspace / Google Session via ADC
+    fetch(`${API_BASE}/api/auth/me`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.authenticated && (data.email.endsWith('@cloudspace.goog') || data.email.endsWith('@google.com'))) {
+          onAuthenticate({ email: data.email, name: data.name });
+        } else {
+          setError(`Access Denied: Account is not in authorized domains (@cloudspace.goog or @google.com).`);
+        }
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setIsVerifying(false));
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
-      {/* Background Glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 left-1/3 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#0a0d14] flex flex-col items-center justify-center p-4 font-sans text-slate-100">
+      <div className="max-w-sm w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6 text-center">
+        {/* Minimal Shield Lock Icon */}
+        <div className="w-12 h-12 mx-auto rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-[#4285F4]">
+          <Lock className="w-6 h-6" />
+        </div>
 
-      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6 relative z-10 animate-scaleUp">
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-[#4285F4] shadow-lg shadow-blue-500/10">
-            <Lock className="w-7 h-7" />
-          </div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">
-            Magic Countdown Generator
-          </h1>
+        <div className="space-y-1.5">
+          <h2 className="text-lg font-bold text-white tracking-tight">
+            Corporate Sign In
+          </h2>
           <p className="text-xs text-slate-400">
-            Enterprise AI Video Generator (Gemini Nano Banana & Veo 3)
+            Access restricted strictly to authorized accounts:
+          </p>
+          <p className="text-xs font-mono font-bold text-blue-400">
+            @cloudspace.goog &bull; @google.com
           </p>
         </div>
 
-        {/* Domain Lock Badge */}
-        <div className="p-4 rounded-2xl bg-blue-950/40 border border-blue-800/60 space-y-2 text-center">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 text-[#4285F4] text-xs font-bold uppercase tracking-wider">
-            <ShieldCheck className="w-4 h-4 text-[#34A853]" />
-            <span>Authorized Domains Only</span>
+        {/* Error Notice if personal account or unauthorized domain used */}
+        {error && (
+          <div className="p-3.5 rounded-2xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs flex items-start gap-2.5 text-left animate-shake">
+            <ShieldAlert className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+            <span>{error}</span>
           </div>
-          <p className="text-xs text-slate-300">
-            This internal application is locked exclusively to authenticated users from:
-          </p>
-          <div className="flex items-center justify-center gap-2 pt-1 font-mono text-xs font-bold text-blue-300">
-            <span className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700">@cloudspace.goog</span>
-            <span className="text-slate-500">&</span>
-            <span className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700">@google.com</span>
-          </div>
-        </div>
+        )}
 
-        {/* One-Click Quick Authenticate for active Google Session */}
-        <div className="space-y-3">
+        {/* Real Google Sign-In Container */}
+        <div className="space-y-3 pt-2">
+          <div ref={googleBtnRef} className="flex justify-center min-h-[44px]" />
+
+          {/* Direct Sign-In Button */}
           <button
             type="button"
-            onClick={() => handleQuickLogin('aosterloh@cloudspace.goog')}
+            onClick={handleTriggerGoogleOAuth}
             disabled={isVerifying}
-            className="w-full py-3.5 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm flex items-center justify-center gap-3 transition-all shadow-lg shadow-white/5 active:scale-98"
-          >
-            <div className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#4285F4]" />
-              <span className="w-2.5 h-2.5 rounded-full bg-[#EA4335]" />
-              <span className="w-2.5 h-2.5 rounded-full bg-[#FBBC04]" />
-              <span className="w-2.5 h-2.5 rounded-full bg-[#34A853]" />
-            </div>
-            <span>Sign in as aosterloh@cloudspace.goog</span>
-            <ArrowRight className="w-4 h-4 text-slate-500" />
-          </button>
-        </div>
-
-        {/* Divider */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-slate-800" />
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">or verify email</span>
-          <div className="flex-1 h-px bg-slate-800" />
-        </div>
-
-        {/* Custom Email Form */}
-        <form onSubmit={handleVerify} className="space-y-3">
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1.5">
-              Google Workspace Account Email
-            </label>
-            <input
-              type="email"
-              required
-              value={inputEmail}
-              onChange={(e) => {
-                setInputEmail(e.target.value);
-                setError(null);
-              }}
-              placeholder="user@cloudspace.goog or user@google.com"
-              className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#4285F4] focus:ring-2 focus:ring-blue-500/20 font-mono shadow-inner"
-            />
-          </div>
-
-          {error && (
-            <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs flex items-center gap-2 animate-shake">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isVerifying}
-            className="w-full py-3 px-4 rounded-xl bg-[#4285F4] hover:bg-blue-600 active:scale-98 disabled:opacity-50 text-white font-bold text-sm transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-2"
+            className="w-full py-3 px-4 rounded-full bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-98 disabled:opacity-50"
           >
             {isVerifying ? (
-              <span>Verifying Domain Membership...</span>
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
+                <span>Verifying Corporate Domain...</span>
+              </>
             ) : (
               <>
-                <UserCheck className="w-4 h-4" />
-                <span>Verify & Enter Application</span>
+                <LogIn className="w-4 h-4 text-[#4285F4]" />
+                <span>Sign in with Google Workspace</span>
               </>
             )}
           </button>
-        </form>
+        </div>
       </div>
     </div>
   );
