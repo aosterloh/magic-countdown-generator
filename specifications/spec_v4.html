@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CountdownMaker Specification v4.0 (EGM Phase E4)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --code-bg: #0b1120;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2.5rem 1.5rem;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    header {
+      border-bottom: 2px solid var(--surface-border);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      margin-bottom: 0.75rem;
+    }
+    .badge-v4 {
+      background: rgba(236, 72, 153, 0.15);
+      color: #f472b6;
+      border-color: rgba(236, 72, 153, 0.3);
+    }
+    h1 { font-size: 2.25rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem; }
+    .subtitle { color: var(--text-muted); font-size: 1.1rem; }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+    h2 { font-size: 1.5rem; color: var(--accent); margin-bottom: 1.25rem; }
+    h3 { font-size: 1.15rem; color: #f1f5f9; margin: 1.25rem 0 0.75rem 0; }
+    p, li { color: #cbd5e1; font-size: 0.95rem; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+    li { margin-bottom: 0.5rem; }
+    table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.9rem; }
+    th, td { border: 1px solid var(--surface-border); padding: 0.75rem 1rem; text-align: left; }
+    th { background: var(--code-bg); color: var(--accent); font-weight: 600; }
+    tr:nth-child(even) { background: rgba(15, 23, 42, 0.3); }
+    code, pre {
+      font-family: "JetBrains Mono", "Fira Code", Menlo, Monaco, Consolas, monospace;
+      background: var(--code-bg);
+      border-radius: 6px;
+      font-size: 0.875rem;
+    }
+    code { padding: 0.2rem 0.4rem; color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.2); }
+    pre { padding: 1.25rem; overflow-x: auto; border: 1px solid var(--surface-border); margin: 1rem 0; }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: rgba(56, 189, 248, 0.08);
+      padding: 1rem 1.25rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1rem 0;
+    }
+    .callout.v4-update {
+      border-left-color: #f472b6;
+      background: rgba(236, 72, 153, 0.08);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge badge-v4">EGM Phase E4: Specification v4.0 (Progressive UI & Unified Architecture)</div>
+      <h1>CountdownMaker: 30-Second Cinematic Video Generator</h1>
+      <p class="subtitle">Progressive Step-by-Step UI Disclosure, Real-Time Generation Telemetry & Unified Single-Port Architecture</p>
+    </header>
+
+    <!-- SECTION 1: EXECUTIVE SUMMARY -->
+    <section id="executive-summary">
+      <h2>1. Executive Summary & Objective</h2>
+      <p>
+        <strong>CountdownMaker</strong> automates the creation of 30-second cinematic countdown videos (counting down sequentially from 10 to 1) synchronized to a fixed 30-second soundtrack located at <code>public/countdown/countdown_track.mp3</code>.
+      </p>
+      <div class="callout v4-update">
+        <strong>v4.0 Key UI & Architectural Upgrades:</strong>
+        <ul>
+          <li><strong>Progressive Step-by-Step UI Disclosure:</strong> The frontend only displays the phase currently required by the user, progressively unlocking subsequent stages upon successful completion:
+            <ol>
+              <li><em>Stage 1: Theme & Brand Definition</em> (Active upon start)</li>
+              <li><em>Stage 2: 10 Diegetic Shots Review & Refinement</em> (Revealed only after prompts and image generation start, with a live generation progress banner)</li>
+              <li><em>Stage 3: Veo 3 Video Synthesis</em> (Revealed once images are generated and reviewed)</li>
+              <li><em>Stage 4: Audio Waveform Timeline & Sub-Second Alignment</em> (Revealed once videos are ready)</li>
+              <li><em>Stage 5: Final Master 30s Export</em> (Revealed for master concat assembly)</li>
+            </ol>
+          </li>
+          <li><strong>Visual Generation Feedback & Telemetry Banner:</strong> Animated generation status banner showing active slot count, progress bar ($0\% \to 100\%$), and per-card pulsating glow to provide unambiguous visual cues that generation is running.</li>
+          <li><strong>Unified Single-Server Architecture:</strong> The Express backend builds and serves the frontend client and API endpoints on a single port (<code>http://localhost:3000</code> or <code>http://localhost:5173</code>) eliminating proxy connection failures.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- SECTION 2: PROGRESSIVE UI STATE MACHINE -->
+    <section id="ui-state-machine">
+      <h2>2. Progressive UI State Machine (v4.0)</h2>
+      <pre>
+┌──────────────────────────────────────────────────────────────┐
+│ STAGE 1: Theme & Brand Input Form                            │
+│ (Brand Name, Industry, Visual Anchor)                        │
+└──────────────────────────────┬───────────────────────────────┘
+                               │ User clicks "Synthesize"
+                               ▼
+┌──────────────────────────────────────────────────────────────┐
+│ STAGE 2: 10 Diegetic Shot Review & Image Refinement          │
+│ • Live Progress Banner & Pulse Animation                     │
+│ • 10 Interactive Cards (Accept / Redo / 2-Image Refine / N-1)│
+└──────────────────────────────┬───────────────────────────────┘
+                               │ All 10 Images Ready & Accepted
+                               ▼
+┌──────────────────────────────────────────────────────────────┐
+│ STAGE 3: Veo 3 Image-to-Video Generation                     │
+│ • Per-slot or Batch 4.0s Video Render                        │
+└──────────────────────────────┬───────────────────────────────┘
+                               │ Videos Generated
+                               ▼
+┌──────────────────────────────────────────────────────────────┐
+│ STAGE 4: Interactive Waveform Timeline & Temporal Alignment  │
+│ • Waveform Visualizer & Multi-Track Blocks                   │
+│ • Sub-Second Sliders (Speed-Up / Passthrough / Truncate)     │
+│ • Single-Viewport Master Scrubbing Sync                      │
+└──────────────────────────────┬───────────────────────────────┘
+                               │ Timeline Configured
+                               ▼
+┌──────────────────────────────────────────────────────────────┐
+│ STAGE 5: Master ffmpeg Assembly & MP4 Export                 │
+│ • Native ffmpeg Concat + 30s Soundtrack Synchronization      │
+└──────────────────────────────────────────────────────────────┘
+      </pre>
+    </section>
+
+    <!-- SECTION 3: ACCEPTANCE CRITERIA -->
+    <section id="acceptance-criteria">
+      <h2>3. Acceptance Criteria (v4.0)</h2>
+      <ol>
+        <li>Initial view presents only Stage 1 (Theme & Brand form) with a clean, focused interface.</li>
+        <li>Clicking "Synthesize" immediately reveals Stage 2 with an animated generation banner and progress indicator.</li>
+        <li>Stage 3, 4, and 5 unlock sequentially as dependencies complete.</li>
+        <li>Unified single-port server ensures zero proxy errors.</li>
+      </ol>
+    </section>
+  </div>
+</body>
+</html>

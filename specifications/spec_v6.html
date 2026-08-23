@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Magic Countdown Generator Specification v6.0 (EGM Phase E6)</title>
+  <style>
+    :root {
+      --google-blue: #4285f4;
+      --google-red: #ea4335;
+      --google-yellow: #fbbc04;
+      --google-green: #34a853;
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Google Sans", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2.5rem 1.5rem;
+    }
+    .container { max-width: 1040px; margin: 0 auto; }
+    header {
+      border-bottom: 2px solid var(--surface-border);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .badge-google {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.8rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(66, 133, 244, 0.15);
+      color: #4285f4;
+      border: 1px solid rgba(66, 133, 244, 0.3);
+      margin-bottom: 0.75rem;
+    }
+    h1 { font-size: 2.25rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem; }
+    .subtitle { color: var(--text-muted); font-size: 1.1rem; }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+    h2 { font-size: 1.5rem; color: #4285f4; margin-bottom: 1.25rem; }
+    h3 { font-size: 1.15rem; color: #f1f5f9; margin: 1.25rem 0 0.75rem 0; }
+    p, li { color: #cbd5e1; font-size: 0.95rem; }
+    ul { list-style: disc; margin-left: 1.5rem; margin-bottom: 1rem; }
+    li { margin-bottom: 0.4rem; }
+    pre {
+      background: #090d16;
+      border: 1px solid #1e293b;
+      padding: 1rem;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85rem;
+      color: #38bdf8;
+      margin: 1rem 0;
+    }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1rem 0; }
+    .card {
+      background: #0f172a;
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: #334155;
+      color: #f8fafc;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge-google">EGM Phase E6 Specification</div>
+      <h1>Magic Countdown Generator (Specification v6.0)</h1>
+      <p class="subtitle">
+        30-Second Cinematic Countdown Generator with Gemini Nano Banana (gemini-2.5-flash-image) and Veo 3 Video Synthesis
+      </p>
+    </header>
+
+    <!-- 1. System Overview -->
+    <section>
+      <h2>1. Architecture & Model Integration</h2>
+      <p>
+        The Magic Countdown Generator synthesizes a cohesive 30.0-second broadcast countdown video comprising 10 distinct, photorealistic 16:9 shots counting down from 10 down to 1 with diegetically embedded physical numbers.
+      </p>
+      <div class="grid">
+        <div class="card">
+          <span class="badge">Model: gemini-2.5-flash-image</span>
+          <h3>Gemini Nano Banana</h3>
+          <p>Direct multimodal image synthesis producing photorealistic 1024x1024 / 16:9 PNGs with diegetically integrated physical typography.</p>
+        </div>
+        <div class="card">
+          <span class="badge">Model: Google Veo 3</span>
+          <h3>Veo 3 Video Generation</h3>
+          <p>4.0-second 60fps dynamic camera push-in zooms generated without audio (<code>-an</code>, <code>-preset ultrafast</code>) for rapid rendering, with the 30.0s master soundtrack overlaid exclusively during final master compilation.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. UI Layout: Full-Width Stacked Cards -->
+    <section>
+      <h2>2. Viewport & Layout Architecture</h2>
+      <p>
+        To maximize visual clarity across laptop screens and high-resolution displays:
+      </p>
+      <ul>
+        <li><strong>Full-Width Stacked Feed:</strong> Shot cards are stacked vertically (<code>flex flex-col gap-8 w-full max-w-5xl mx-auto</code>) utilizing the full horizontal resolution rather than constrained multi-column grids.</li>
+        <li><strong>Side-by-Side Video & Image View (30% / 70%):</strong> Once a Veo 3 video is synthesized, the card dynamically transitions to a side-by-side view with the input frame on the left (30% width) and the high-definition Veo 3 video player on the right (70% width) for immediate visual inspection.</li>
+        <li><strong>2-Worker Bounded Parallel Queue:</strong> Both image and Veo 3 video generation pipelines use a bounded concurrency worker pool (exactly 2 concurrent workers) to maximize synthesis throughput while preventing 429 quota exhaustion and network congestion.</li>
+        <li><strong>React Portal Modal System:</strong> All dialogs (Log Analysis, Test Gemini API, Model Selector) are mounted via <code>createPortal(..., document.body)</code> at <code>z-[99999]</code> to prevent clipping or occlusion behind header and main containers.</li>
+        <li><strong>Clean Brand Setup:</strong> Step 1 cleanly presents Customer Brand & Aesthetic Direction with a one-click action: <strong>"Create Veo 3 Input Images"</strong>.</li>
+      </ul>
+    </section>
+
+    <!-- 3. Real-Time Log Analysis -->
+    <section>
+      <h2>3. Real-Time Log Analysis & Observability</h2>
+      <p>
+        The header includes a live <strong>Log Analysis</strong> modal connected to <code>GET /api/logs</code>:
+      </p>
+      <ul>
+        <li>Captures real-time timestamps, log levels (<code>INFO</code>, <code>SUCCESS</code>, <code>WARN</code>, <code>ERROR</code>), and categories (<code>GEMINI_AI</code>, <code>ADC_AUTH</code>, <code>FFMPEG</code>, <code>SYSTEM</code>).</li>
+        <li>Displays model execution latency, payload sizes (e.g. 1.66 MB PNG), and HTTP response codes.</li>
+      </ul>
+    </section>
+
+    <!-- 4. Endpoints & API Contract -->
+    <section>
+      <h2>4. API Contract Summary</h2>
+      <pre>
+GET  /api/logs                     - Returns in-memory ring buffer of server & AI events
+POST /api/generate-diegetic-prompts - Synthesizes 10 prompt concepts with gemini-2.5-flash
+POST /api/generate-image           - Generates 16:9 AI image with gemini-2.5-flash-image
+POST /api/test-gemini-api          - Diagnostic single-image synthesis test endpoint
+POST /api/refine-image             - Dual-image reference refinement
+POST /api/generate-video           - 4.0s Veo 3 video compilation
+POST /api/process-temporal-video   - FFmpeg speed/trim alignment
+POST /api/export-master            - Concat 10 slots + 30.0s master soundtrack</pre>
+    </section>
+  </div>
+</body>
+</html>

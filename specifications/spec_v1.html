@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CountdownMaker Specification v1.0 (EGM Phase E3)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --code-bg: #0b1120;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2.5rem 1.5rem;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    header {
+      border-bottom: 2px solid var(--surface-border);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      margin-bottom: 0.75rem;
+    }
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+    }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+    h2 {
+      font-size: 1.5rem;
+      color: var(--accent);
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    h3 {
+      font-size: 1.15rem;
+      color: #f1f5f9;
+      margin: 1.25rem 0 0.75rem 0;
+    }
+    p, li {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+    ul, ol {
+      padding-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    li {
+      margin-bottom: 0.5rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.25rem 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid var(--surface-border);
+      padding: 0.75rem 1rem;
+      text-align: left;
+    }
+    th {
+      background: var(--code-bg);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    tr:nth-child(even) {
+      background: rgba(15, 23, 42, 0.3);
+    }
+    code, pre {
+      font-family: "JetBrains Mono", "Fira Code", Menlo, Monaco, Consolas, monospace;
+      background: var(--code-bg);
+      border-radius: 6px;
+      font-size: 0.875rem;
+    }
+    code {
+      padding: 0.2rem 0.4rem;
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+    pre {
+      padding: 1.25rem;
+      overflow-x: auto;
+      border: 1px solid var(--surface-border);
+      margin: 1rem 0;
+    }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: rgba(56, 189, 248, 0.08);
+      padding: 1rem 1.25rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1rem 0;
+    }
+    .callout.warning {
+      border-left-color: var(--warning);
+      background: rgba(245, 158, 11, 0.08);
+    }
+    .status-tag {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .status-pass { background: rgba(34, 197, 94, 0.2); color: var(--success); }
+    .status-warn { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge">EGM Phase E3 Formal Specification</div>
+      <h1>CountdownMaker: 30-Second Cinematic Video Generator</h1>
+      <p class="subtitle">Deterministic Diegetic Number Grounding, Multimodal Image Refinement, Veo 3 Video Synthesis, and Audio Stitching</p>
+    </header>
+
+    <!-- SECTION 1: EXECUTIVE SUMMARY -->
+    <section id="executive-summary">
+      <h2>1. Executive Summary & Objective</h2>
+      <p>
+        <strong>CountdownMaker</strong> automates the end-to-end creation of customized 30-second countdown videos (counting down sequentially from 10 to 1) synchronized to a fixed 30-second soundtrack (located at <code>public/countdown/countdown_track.mp3</code>).
+      </p>
+      <p>
+        The workflow replaces manual prompt copy-pasting by guiding the user through a deterministic 4-stage pipeline:
+      </p>
+      <ol>
+        <li><strong>Theme & Anchor Synthesis:</strong> Ingest customer vertical, brand name, and custom aesthetics to generate a Universal Visual Anchor and 10 diegetic scene prompts.</li>
+        <li><strong>Nano Banana 2 (NB2) Image Generation & Refinement:</strong> Concurrently generate 10 photorealistic thumbnails (10 to 1). Provide per-shot acceptance, $N-1$ rollback, and dual-image prompt re-generation (Target Image + Brand Reference asset).</li>
+        <li><strong>Veo 3 Image-to-Video Generation:</strong> Convert the 10 approved static images into ten 4-second video clips using pure image conditioning.</li>
+        <li><strong>Temporal Alignment & Audio Stitching:</strong> Allow per-clip speed-up ($1.33\times$) or front/back truncation ($3.0\text{s}$ slice) with in-app preview, followed by automated ffmpeg audio-video master assembly.</li>
+      </ol>
+    </section>
+
+    <!-- SECTION 2: MATHEMATICAL & LOGICAL FORMULAS -->
+    <section id="math-formulas">
+      <h2>2. Mathematical & Logical Execution Model</h2>
+      <p>The timeline and frame allocation are governed by strict mathematical constraints:</p>
+      
+      <h3>2.1 Audio Track & Clip Partition Matrix</h3>
+      <ul>
+        <li><strong>Master Audio Duration:</strong> $T_{\text{audio}} = 30.00\text{s}$</li>
+        <li><strong>Slot Count:</strong> $N = 10$ slots ($k \in [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]$)</li>
+        <li><strong>Target Segment Duration:</strong> $t_{\text{target}} = \frac{T_{\text{audio}}}{N} = \frac{30.00\text{s}}{10} = 3.00\text{s}$</li>
+        <li><strong>Raw Veo 3 Clip Output Duration:</strong> $t_{\text{veo}} = 4.00\text{s}$</li>
+      </ul>
+
+      <h3>2.2 Temporal Alignment Transforms</h3>
+      <p>For each slot $k$, the user selects one of three deterministic transforms $f_{\text{time}}(k)$ to convert $4.00\text{s} \to 3.00\text{s}$:</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Transform Mode</th>
+            <th>Formula / Time Window</th>
+            <th>ffmpeg Filter Argument</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Speed-Up ($1.33\times$)</strong></td>
+            <td>$t' = \frac{t}{1.333333} = 3.00\text{s}$</td>
+            <td><code>setpts=0.75*PTS</code></td>
+          </tr>
+          <tr>
+            <td><strong>Truncate Front (Keep End Zoom)</strong></td>
+            <td>$t \in [1.00\text{s}, 4.00\text{s}]$ (Duration $= 3.00\text{s}$)</td>
+            <td><code>-ss 00:00:01.000 -t 00:00:03.000</code></td>
+          </tr>
+          <tr>
+            <td><strong>Truncate Back (Keep Context)</strong></td>
+            <td>$t \in [0.00\text{s}, 3.00\text{s}]$ (Duration $= 3.00\text{s}$)</td>
+            <td><code>-ss 00:00:00.000 -t 00:00:03.000</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>2.3 Timeline Invariant Formula</h3>
+      <div class="callout">
+        $$\sum_{k=1}^{10} \text{Duration}(f_{\text{time}}(k)) = 30.00\text{s} \pm 0.02\text{s}$$
+        Master concat sequence: $\text{Concat}(C_{10}, C_9, C_8, C_7, C_6, C_5, C_4, C_3, C_2, C_1) \oplus \text{Audio}(30.0\text{s})$
+      </div>
+    </section>
+
+    <!-- SECTION 3: ARCHITECTURE & DATA SCHEMAS -->
+    <section id="architecture">
+      <h2>3. Component Architecture & Data Schemas</h2>
+
+      <h3>3.1 State Machine Lifecycle</h3>
+      <pre>
+[User Input: Brand + Theme] 
+       │
+       ▼
+[Gemini: Generate 10 Diegetic Prompts + Visual Anchor]
+       │
+       ▼
+[Nano Banana 2: Async Parallel Dispatch (10 Slots)]
+       │
+       ├───► [Slot Review Gate: Accept (default) / Edit / Redo]
+       │         ▲              │
+       │         │ (Rollback)   ▼ (Redo / Dual-Image Ingestion)
+       │         └────── [Previous History Stack (N-1)]
+       ▼
+[Veo 3: Async Image-to-Video Dispatch (10 Slots @ 4s)]
+       │
+       ▼
+[Temporal Post-Processing Gate: Speed-Up vs Truncate Front/Back]
+       │
+       ▼
+[ffmpeg Audio-Video Master Concat Engine]
+       │
+       ▼
+[Final 30-Second MP4 Video Export]
+      </pre>
+
+      <h3>3.2 Slot Data Schema (TypeScript Definition)</h3>
+      <pre><code>interface CountdownSlot {
+  index: number; // 10 down to 1
+  diegeticNumber: number; // Number represented physically in scene
+  sceneConcept: string; // Brief description (e.g., "Engine tachometer gauge")
+  imagePrompt: string; // Full enriched prompt with Universal Style Anchor
+  
+  // Image Generation State
+  currentImageUri: string | null;
+  historyImageUri: string | null; // For N-1 rollback
+  isImageAccepted: boolean;
+  isImageLoading: boolean;
+  imageError: string | null;
+
+  // Refinement Parameters
+  customPromptOverride?: string;
+  brandReferenceImageUri?: string; // Optional 2nd image uploaded by user
+
+  // Video Generation State
+  rawVideoUri: string | null;
+  isVideoLoading: boolean;
+  videoError: string | null;
+
+  // Temporal Alignment State
+  alignmentMode: 'SPEED_UP' | 'TRUNCATE_FRONT' | 'TRUNCATE_BACK';
+  processedVideoUri: string | null;
+}</code></pre>
+
+      <h3>3.3 Universal Visual Style Anchor Contract</h3>
+      <p>Every generated Nano Banana prompt and Veo scene is strictly prepended/appended with the following invariant aesthetic parameters:</p>
+      <div class="callout">
+        <code>"Cinematic 8K, photorealistic, shot on 35mm anamorphic lens, shallow depth of field, natural atmospheric lighting, high fidelity texture, hyper-realistic color grading, 16:9 aspect ratio."</code>
+      </div>
+    </section>
+
+    <!-- SECTION 4: EDGE CASE MATRIX & FAILSAFES -->
+    <section id="edge-cases">
+      <h2>4. Edge Case Matrix & Failsafes</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Edge Case / Failure Mode</th>
+            <th>Impact</th>
+            <th>Deterministic Failsafe Mechanism</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Diegetic Number Occlusion / Distortion</strong></td>
+            <td>The generated image does not show number $k$ clearly.</td>
+            <td>Slot allows 1-click single-slot regeneration with optional manual prompt edit; preserves previous image in <code>historyImageUri</code> until new generation is confirmed.</td>
+          </tr>
+          <tr>
+            <td><strong>Brand Reference Replacement Trap</strong></td>
+            <td>User supplies brand car/aircraft image to replace generic asset in slot.</td>
+            <td>System passes both <code>currentImageUri</code> and <code>brandReferenceImageUri</code> to Gemini / NB2 multimodal prompt constructor to generate contextualized replacement.</td>
+          </tr>
+          <tr>
+            <td><strong>API Concurrency & Quota Rate Limits</strong></td>
+            <td>10 simultaneous Veo / NB2 calls trigger 429 quota exhaustion.</td>
+            <td>Queue manager with token bucket rate-limiter (default concurrency: 3 concurrent jobs, automatic exponential backoff with jitter).</td>
+          </tr>
+          <tr>
+            <td><strong>Audio-Video Concat Drift / Pops</strong></td>
+            <td>Concatenating 10 clips with fractional fps causes audio mismatch.</td>
+            <td>Standardize all clips to <code>fps=30.0</code>, <code>yuv420p</code>, <code>1920x1080</code> before concat; clamp master audio stream length strictly to <code>30.000s</code> with <code>-shortest</code> or explicit trim.</td>
+          </tr>
+          <tr>
+            <td><strong>Browser Memory Exhaustion (10 Videos)</strong></td>
+            <td>Playing 10 full 4K/HD video streams simultaneously slows the browser.</td>
+            <td>Virtualize slot video elements and lazy-load video previews on scroll/focus.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- SECTION 5: GRADING RUBRIC & EVALUATION CRITERIA -->
+    <section id="rubric">
+      <h2>5. Formal Grading Rubric</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Rubric ID</th>
+            <th>Dimension</th>
+            <th>Evaluation Rule</th>
+            <th>Passing Threshold</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>R1</strong></td>
+            <td>Diegetic Number Fidelity</td>
+            <td>Every shot (10 to 1) contains an embedded physical number (no floating 2D overlays).</td>
+            <td>$10/10$ slots ($100\%$)</td>
+          </tr>
+          <tr>
+            <td><strong>R2</strong></td>
+            <td>Universal Visual Coherence</td>
+            <td>Style anchor is consistently present across all 10 generation payloads.</td>
+            <td>$100\%$ compliance</td>
+          </tr>
+          <tr>
+            <td><strong>R3</strong></td>
+            <td>Rollback & Refinement Contract</td>
+            <td>$N-1$ state preserved; rollback restores previous asset seamlessly.</td>
+            <td>Deterministic pass</td>
+          </tr>
+          <tr>
+            <td><strong>R4</strong></td>
+            <td>Temporal Precision</td>
+            <td>Total video track duration equals $30.00\text{s} \pm 0.05\text{s}$.</td>
+            <td>$30.00\text{s}$ exact</td>
+          </tr>
+          <tr>
+            <td><strong>R5</strong></td>
+            <td>Audio Synchronization</td>
+            <td>Stitched output plays <code>public/countdown/countdown_track.mp3</code> with clean sync and no drift.</td>
+            <td>Deterministic pass</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- SECTION 6: ACCEPTANCE CRITERIA -->
+    <section id="acceptance-criteria">
+      <h2>6. Acceptance Criteria</h2>
+      <ol>
+        <li>User can input a brand name and optional theme, generating 10 diegetic thumbnail prompts.</li>
+        <li>User can independently review and approve each of the 10 images.</li>
+        <li>User can re-roll, supply custom prompt overrides, or provide a 2nd reference image for any slot without affecting other slots.</li>
+        <li>User can rollback any slot to its previous image generation.</li>
+        <li>User triggers Veo 3 image-to-video rendering only after all 10 images are approved.</li>
+        <li>User can select Speed-Up ($1.33\times$) or Truncate Front/Back for each clip and preview the resulting 3.0s cut.</li>
+        <li>The system outputs a final 30-second high-definition MP4 video perfectly aligned with the audio soundtrack.</li>
+      </ol>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Magic Countdown Generator Specification v7.0 (EGM Phase E7)</title>
+  <style>
+    :root {
+      --google-blue: #4285f4;
+      --google-red: #ea4335;
+      --google-yellow: #fbbc04;
+      --google-green: #34a853;
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Google Sans", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2.5rem 1.5rem;
+    }
+    .container { max-width: 1040px; margin: 0 auto; }
+    header {
+      border-bottom: 2px solid var(--surface-border);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .badge-google {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.8rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(66, 133, 244, 0.15);
+      color: #4285f4;
+      border: 1px solid rgba(66, 133, 244, 0.3);
+      margin-bottom: 0.75rem;
+    }
+    h1 { font-size: 2.25rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem; }
+    .subtitle { color: var(--text-muted); font-size: 1.1rem; }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+    h2 { font-size: 1.5rem; color: #4285f4; margin-bottom: 1.25rem; }
+    h3 { font-size: 1.15rem; color: #f1f5f9; margin: 1.25rem 0 0.75rem 0; }
+    p, li { color: #cbd5e1; font-size: 0.95rem; }
+    ul { list-style: disc; margin-left: 1.5rem; margin-bottom: 1rem; }
+    li { margin-bottom: 0.4rem; }
+    pre {
+      background: #090d16;
+      border: 1px solid #1e293b;
+      padding: 1rem;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85rem;
+      color: #38bdf8;
+      margin: 1rem 0;
+    }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1rem 0; }
+    .card {
+      background: #0f172a;
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: #334155;
+      color: #f8fafc;
+    }
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #4285f4;
+      color: white;
+      font-weight: 800;
+      font-size: 12px;
+      margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge-google">Elephant-Goldfish Model (EGM) Specification v7.0</div>
+      <h1>Magic Countdown Generator Specification</h1>
+      <p class="subtitle">
+        30-Second Cinematic Countdown Generator with Gemini Nano Banana (gemini-2.5-flash-image) and Veo 3 Video Synthesis
+      </p>
+    </header>
+
+    <!-- 1. Multi-Step Human Verification Pipeline -->
+    <section>
+      <h2>1. Five-Stage Sequential Workflow Pipeline</h2>
+      <p>
+        In accordance with the Elephant-Goldfish Model (EGM), the user exercises strict verification gates before resource-intensive generation:
+      </p>
+      <ul>
+        <li><strong>Stage 1 (Brand & Style Direction):</strong> Configure Customer Brand (e.g. Porsche Motorsport) and scene setting. Action: <em>"Generate 10 Text Prompts"</em>.</li>
+        <li><strong>Stage 2 (Human Verification & Prompt Review):</strong> Review all 10 diegetic prompt cards (10 down to 1). The user can manually edit prompts in-place, trigger <em>"Re-create Prompt"</em> for individual numbers with Gemini, or approve all prompts before proceeding. Action: <em>"Create Veo 3 Input Images"</em>.</li>
+        <li><strong>Stage 3 (Diegetic Image Synthesis):</strong> 2-worker bounded parallel pool synthesizes photorealistic 1024x1024 / 16:9 images with Gemini Nano Banana. Full-width stacked layout for maximum laptop screen resolution.</li>
+        <li><strong>Stage 4 (Veo 3 Video Synthesis & Side-by-Side Inspection):</strong> Generates 4.0s dynamic camera zoom clips without audio (<code>-an</code>). Once generated, each card dynamically splits into <strong>30% Input Frame / 70% Veo 3 Video</strong>.</li>
+        <li><strong>Stage 5 (Temporal Alignment & Master Export):</strong> Interactive waveform timeline maps slots to the 30.0s master soundtrack and executes native FFmpeg concatenation.</li>
+      </ul>
+    </section>
+
+    <!-- 2. AI Model Stack -->
+    <section>
+      <h2>2. AI Model Integration & APIs</h2>
+      <div class="grid">
+        <div class="card">
+          <span class="badge">gemini-2.5-flash</span>
+          <h3>Prompt Director Engine</h3>
+          <p>Synthesizes 10 creative diegetic prompt concepts and handles single-shot prompt re-creation via <code>/api/recreate-prompt</code>.</p>
+        </div>
+        <div class="card">
+          <span class="badge">gemini-2.5-flash-image</span>
+          <h3>Gemini Nano Banana</h3>
+          <p>Generates photorealistic 16:9 images with physically embedded countdown numerals (10 to 1) directly in machine textures.</p>
+        </div>
+        <div class="card">
+          <span class="badge">Google Veo 3</span>
+          <h3>Image-to-Video Engine</h3>
+          <p>4.0-second 60fps dynamic camera push-in zooms rendered without audio (<code>-an</code>, <code>-preset ultrafast</code>) for rapid rendering throughput.</p>
+        </div>
+        <div class="card">
+          <span class="badge">FFmpeg Native Core</span>
+          <h3>Master Soundtrack Muxing</h3>
+          <p>Concatenates the 10 video clips and overlays the 30.0-second master audio track with exact millisecond synchronization.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. System Architecture & Observability -->
+    <section>
+      <h2>3. Observability & Portal Architecture</h2>
+      <ul>
+        <li><strong>Live Log Analysis:</strong> Real-time in-memory ring buffer tracking all Gemini AI requests, latency, image payload sizes (e.g. 1.66 MB PNG), and HTTP status codes via <code>GET /api/logs</code>.</li>
+        <li><strong>React Portal Modals:</strong> All overlays (Log Analysis, Test Gemini API, Model Selector) are portaled to <code>document.body</code> at <code>z-[99999]</code> to prevent clipping or viewport occlusion.</li>
+        <li><strong>2-Worker Bounded Queue:</strong> Guarantees that neither image generation nor video rendering exceeds 2 concurrent tasks, preventing 429 quota errors.</li>
+      </ul>
+    </section>
+
+    <!-- 4. Endpoints & API Contract -->
+    <section>
+      <h2>4. Backend API Contract</h2>
+      <pre>
+GET  /specifications/spec_v7.html       - Static EGM HTML specification documentation
+GET  /api/logs                          - Real-time event log buffer and AI traces
+POST /api/generate-diegetic-prompts      - Batch 10 prompt synthesis (Gemini 2.5 Flash)
+POST /api/recreate-prompt               - Single prompt re-creation (Gemini 2.5 Flash)
+POST /api/generate-image                - 16:9 image synthesis (Gemini Nano Banana)
+POST /api/test-gemini-api               - Direct single-image diagnostic test
+POST /api/refine-image                  - 2-image dual reference refinement
+POST /api/generate-video                - 4.0s Veo 3 video compilation (-an)
+POST /api/process-temporal-video        - FFmpeg speed/trim temporal alignment
+POST /api/export-master                 - Master 30.0s video export + soundtrack mux</pre>
+    </section>
+  </div>
+</body>
+</html>

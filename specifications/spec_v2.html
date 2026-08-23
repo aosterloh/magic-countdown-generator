@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CountdownMaker Specification v2.0 (EGM Phase E4)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --code-bg: #0b1120;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2.5rem 1.5rem;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    header {
+      border-bottom: 2px solid var(--surface-border);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      margin-bottom: 0.75rem;
+    }
+    .badge-v2 {
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--success);
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+    h1 { font-size: 2.25rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem; }
+    .subtitle { color: var(--text-muted); font-size: 1.1rem; }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+    h2 { font-size: 1.5rem; color: var(--accent); margin-bottom: 1.25rem; }
+    h3 { font-size: 1.15rem; color: #f1f5f9; margin: 1.25rem 0 0.75rem 0; }
+    p, li { color: #cbd5e1; font-size: 0.95rem; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+    li { margin-bottom: 0.5rem; }
+    table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.9rem; }
+    th, td { border: 1px solid var(--surface-border); padding: 0.75rem 1rem; text-align: left; }
+    th { background: var(--code-bg); color: var(--accent); font-weight: 600; }
+    tr:nth-child(even) { background: rgba(15, 23, 42, 0.3); }
+    code, pre {
+      font-family: "JetBrains Mono", "Fira Code", Menlo, Monaco, Consolas, monospace;
+      background: var(--code-bg);
+      border-radius: 6px;
+      font-size: 0.875rem;
+    }
+    code { padding: 0.2rem 0.4rem; color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.2); }
+    pre { padding: 1.25rem; overflow-x: auto; border: 1px solid var(--surface-border); margin: 1rem 0; }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: rgba(56, 189, 248, 0.08);
+      padding: 1rem 1.25rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1rem 0;
+    }
+    .callout.v2-update {
+      border-left-color: var(--success);
+      background: rgba(34, 197, 94, 0.08);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge badge-v2">EGM Phase E4: Specification v2.0</div>
+      <h1>CountdownMaker: 30-Second Cinematic Video Generator</h1>
+      <p class="subtitle">Interactive Audio-Waveform Timeline, Flexible Per-Clip Truncation (Sub-Second Precision), Speed-Up, and Passthrough</p>
+    </header>
+
+    <!-- SECTION 1: EXECUTIVE SUMMARY -->
+    <section id="executive-summary">
+      <h2>1. Executive Summary & Objective</h2>
+      <p>
+        <strong>CountdownMaker</strong> automates the creation of cinematic countdown videos (counting down sequentially from 10 to 1) synchronized against a 30-second soundtrack located at <code>public/countdown/countdown_track.mp3</code>.
+      </p>
+      <div class="callout v2-update">
+        <strong>v2.0 Key Enhancements:</strong>
+        <ul>
+          <li><strong>Audio Waveform Timeline Visualizer:</strong> An interactive visual multi-track timeline displaying the soundtrack waveform aligned with all 10 video blocks.</li>
+          <li><strong>Variable Temporal Modes per Slot:</strong> Users can choose between:
+            <ol>
+              <li><strong>Speed-Up:</strong> Accelerate 4s clip to 3.0s (or target duration).</li>
+              <li><strong>Untouched (Passthrough):</strong> Keep full 4.0s duration.</li>
+              <li><strong>Sub-Second Truncation (Front or Back):</strong> Trim from beginning or end with fractional precision (e.g., 2.0s, 2.5s, 3.0s, 3.2s).</li>
+            </ol>
+          </li>
+          <li><strong>Elastic Timeline Invariant:</strong> Total video length may naturally float (e.g. 28s–34s); clips past the 30s song duration are supported, and audio handles final fade/clamp cleanly.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- SECTION 2: MATHEMATICAL & LOGICAL FORMULAS -->
+    <section id="math-formulas">
+      <h2>2. Mathematical & Logical Execution Model (v2.0)</h2>
+      
+      <h3>2.1 Raw Input Parameters</h3>
+      <ul>
+        <li><strong>Master Audio Duration:</strong> $T_{\text{audio}} = 30.00\text{s}$</li>
+        <li><strong>Slot Count:</strong> $N = 10$ slots ($k \in [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]$)</li>
+        <li><strong>Raw Veo 3 Duration per Clip:</strong> $D_{\text{raw}} = 4.00\text{s}$</li>
+      </ul>
+
+      <h3>2.2 Per-Clip Temporal Transform Catalog</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Transform Mode</th>
+            <th>Parameters</th>
+            <th>Effective Duration $d_k$</th>
+            <th>ffmpeg Filter / Arguments</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>SPEED_UP</strong></td>
+            <td>Target duration $d_k \in (0.5\text{s}, 4.0\text{s}]$ (Default: $3.00\text{s}$)</td>
+            <td>$d_k = 3.00\text{s}$ (speed factor $S = \frac{4.0}{d_k} = 1.333\times$)</td>
+            <td><code>setpts=(3.0/4.0)*PTS</code></td>
+          </tr>
+          <tr>
+            <td><strong>PASSTHROUGH</strong></td>
+            <td>Untouched full clip</td>
+            <td>$d_k = 4.00\text{s}$</td>
+            <td>No filter (Direct copy)</td>
+          </tr>
+          <tr>
+            <td><strong>TRUNCATE_FRONT</strong></td>
+            <td>Trim $t_{\text{start}} = 4.00 - d_k$; keeps climax/zoom end</td>
+            <td>$d_k \in [0.50\text{s}, 4.00\text{s}]$ (e.g. $2.5\text{s} \implies t \in [1.5\text{s}, 4.0\text{s}]$)</td>
+            <td><code>-ss $(4.0 - d_k) -t $d_k</code></td>
+          </tr>
+          <tr>
+            <td><strong>TRUNCATE_BACK</strong></td>
+            <td>Trim $t_{\text{start}} = 0.00$; keeps opening context</td>
+            <td>$d_k \in [0.50\text{s}, 4.00\text{s}]$ (e.g. $2.5\text{s} \implies t \in [0.0\text{s}, 2.5\text{s}]$)</td>
+            <td><code>-ss 0.000 -t $d_k</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>2.3 Interactive Waveform Timeline Model</h3>
+      <p>The timeline tracks cumulative start timestamps $\tau_k$ on the audio waveform canvas:</p>
+      <div class="callout">
+        $$\tau_{10} = 0.00\text{s}, \quad \tau_{k-1} = \tau_k + d_k, \quad T_{\text{total}} = \sum_{k=1}^{10} d_k$$
+        The waveform UI renders a visual 30-second audio track with 10 draggable/resizable colored segment blocks placed sequentially at $[\tau_k, \tau_k + d_k]$.
+      </div>
+    </section>
+
+    <!-- SECTION 3: ARCHITECTURE & DATA SCHEMAS -->
+    <section id="architecture">
+      <h2>3. Component Architecture & Data Schemas (v2.0)</h2>
+
+      <h3>3.1 Updated CountdownSlot Schema (TypeScript)</h3>
+      <pre><code>type TemporalMode = 'SPEED_UP' | 'PASSTHROUGH' | 'TRUNCATE_FRONT' | 'TRUNCATE_BACK';
+
+interface CountdownSlot {
+  index: number; // 10 down to 1
+  diegeticNumber: number; // Number represented physically in scene
+  sceneConcept: string; 
+  imagePrompt: string; 
+  
+  // Image Generation State
+  currentImageUri: string | null;
+  historyImageUri: string | null; // N-1 rollback
+  isImageAccepted: boolean;
+  isImageLoading: boolean;
+  imageError: string | null;
+
+  // Refinement Parameters
+  customPromptOverride?: string;
+  brandReferenceImageUri?: string; // 2nd reference image
+
+  // Video Generation State
+  rawVideoUri: string | null; // 4.0s raw Veo output
+  isVideoLoading: boolean;
+  videoError: string | null;
+
+  // v2.0 Temporal Alignment & Trimming Configuration
+  temporalConfig: {
+    mode: TemporalMode;
+    targetDurationSeconds: number; // e.g. 2.0, 2.5, 3.0, 4.0 (sub-second precision)
+    trimStartSeconds: number; // Start offset within 4.0s clip
+    trimEndSeconds: number;   // End offset within 4.0s clip
+  };
+  processedVideoUri: string | null;
+}</code></pre>
+
+      <h3>3.2 Audio-Video Concat Strategy</h3>
+      <p>When assembling the master video with ffmpeg:</p>
+      <ul>
+        <li>If $T_{\text{total}} > 30.00\text{s}$: The video continues until $T_{\text{total}}$, and the audio can either hold silence or fade out smoothly.</li>
+        <li>If $T_{\text{total}} \le 30.00\text{s}$: Audio plays in full or is clamped to $T_{\text{total}}$.</li>
+      </ul>
+    </section>
+
+    <!-- SECTION 4: CHANGELOG & RECONCILIATION -->
+    <section id="reconciliation">
+      <h2>4. Phase E4 Feedback Reconciliation Log</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Change Item</th>
+            <th>v1.0 (Previous)</th>
+            <th>v2.0 (Updated)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Temporal Modes</strong></td>
+            <td>Rigid 3.0s (Speed-Up or 3s Truncate only).</td>
+            <td>Speed-Up, Untouched Passthrough (4s), or Flexible Sub-Second Truncate (e.g. 2.5s).</td>
+          </tr>
+          <tr>
+            <td><strong>Timeline Duration Invariant</strong></td>
+            <td>Strictly locked to $\sum d_k = 30.00\text{s} \pm 0.02\text{s}$.</td>
+            <td>Elastic timeline supported ($\sum d_k$ can vary, extending past 30s song).</td>
+          </tr>
+          <tr>
+            <td><strong>Timeline UI</strong></td>
+            <td>Simple list-based preview cards.</td>
+            <td>Audio Waveform multi-track timeline showing clip boundaries relative to song beats.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- SECTION 5: ACCEPTANCE CRITERIA -->
+    <section id="acceptance-criteria">
+      <h2>5. Acceptance Criteria (v2.0)</h2>
+      <ol>
+        <li>User can configure each of the 10 Veo clips to Speed-up, Passthrough (4s), or Truncate (Front/Back) with fractional second precision (e.g. 2.5s).</li>
+        <li>UI provides an interactive audio waveform timeline showing how the 10 video blocks align against the 30-second soundtrack.</li>
+        <li>Video preview player reflects exact trimmed/adjusted duration per clip before final export.</li>
+        <li>Master export stitches all 10 clips with audio into a single MP4, gracefully handling total durations $\ge$ or $\le$ 30 seconds.</li>
+      </ol>
+    </section>
+  </div>
+</body>
+</html>

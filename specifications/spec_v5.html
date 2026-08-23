@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CountdownMaker Specification v5.0 (EGM Phase E4)</title>
+  <style>
+    :root {
+      --google-blue: #4285f4;
+      --google-red: #ea4335;
+      --google-yellow: #fbbc04;
+      --google-green: #34a853;
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Google Sans", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2.5rem 1.5rem;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    header {
+      border-bottom: 2px solid var(--surface-border);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .badge-google {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.8rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(66, 133, 244, 0.15);
+      color: #4285f4;
+      border: 1px solid rgba(66, 133, 244, 0.3);
+      margin-bottom: 0.75rem;
+    }
+    h1 { font-size: 2.25rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem; }
+    .subtitle { color: var(--text-muted); font-size: 1.1rem; }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 14px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+    h2 { font-size: 1.5rem; color: #4285f4; margin-bottom: 1.25rem; }
+    h3 { font-size: 1.15rem; color: #f1f5f9; margin: 1.25rem 0 0.75rem 0; }
+    p, li { color: #cbd5e1; font-size: 0.95rem; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+    li { margin-bottom: 0.5rem; }
+    table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.9rem; }
+    th, td { border: 1px solid var(--surface-border); padding: 0.75rem 1rem; text-align: left; }
+    th { background: #0b1120; color: #4285f4; font-weight: 600; }
+    tr:nth-child(even) { background: rgba(15, 23, 42, 0.3); }
+    code, pre {
+      font-family: "JetBrains Mono", "Fira Code", monospace;
+      background: #0b1120;
+      border-radius: 6px;
+      font-size: 0.875rem;
+    }
+    code { padding: 0.2rem 0.4rem; color: #38bdf8; }
+    pre { padding: 1.25rem; overflow-x: auto; border: 1px solid var(--surface-border); margin: 1rem 0; }
+    .callout {
+      border-left: 4px solid var(--google-blue);
+      background: rgba(66, 133, 244, 0.08);
+      padding: 1rem 1.25rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1rem 0;
+    }
+    .callout.google-theme {
+      border-left-color: var(--google-green);
+      background: rgba(52, 168, 83, 0.08);
+    }
+    .google-dots {
+      display: inline-flex;
+      gap: 4px;
+    }
+    .dot-blue { color: var(--google-blue); }
+    .dot-red { color: var(--google-red); }
+    .dot-yellow { color: var(--google-yellow); }
+    .dot-green { color: var(--google-green); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge-google">
+        <span class="google-dots">
+          <span class="dot-blue">●</span>
+          <span class="dot-red">●</span>
+          <span class="dot-yellow">●</span>
+          <span class="dot-green">●</span>
+        </span>
+        EGM Phase E4: Specification v5.0
+      </div>
+      <h1>CountdownMaker: 30-Second Cinematic Video Generator</h1>
+      <p class="subtitle">Gemini Nano Banana Model Grounding, Rotating Prompt Carousel, One-by-One Image Stream, Google Palette & Dark/Light Mode</p>
+    </header>
+
+    <!-- SECTION 1: EXECUTIVE SUMMARY -->
+    <section id="executive-summary">
+      <h2>1. Executive Summary & Objective</h2>
+      <p>
+        <strong>CountdownMaker v5.0</strong> elevates the generation experience with Google design ergonomics, dynamic carousel feedback, one-by-one image rendering, and integration with the latest <strong>Gemini Nano Banana (NB2 / Gemini 2.0 Flash)</strong> multimodal image model.
+      </p>
+      <div class="callout google-theme">
+        <strong>v5.0 Core Enhancements:</strong>
+        <ul>
+          <li><strong>Gemini Latest Nano Banana Model:</strong> Native image generation & multimodal grounding utilizing Gemini 2.0 Flash / Nano Banana + Imagen 3 endpoints.</li>
+          <li><strong>Rotating Text Prompt Carousel with Giant Number:</strong> During synthesis, users view an interactive carousel of the 10 diegetic prompts featuring a prominent, large representation of the active countdown number (10 $\to$ 1). Autoscrolls every 10 seconds with manual swipe/nav controls.</li>
+          <li><strong>Progress Bar Below Carousel:</strong> A unified Google-colored progress bar ($0\% \to 100\%$) positioned immediately beneath the carousel.</li>
+          <li><strong>Dynamic One-by-One Image Stream:</strong> No empty placeholder slots during generation; images appear dynamically one-by-one as each completes underneath the progress bar.</li>
+          <li><strong>Google Brand Aesthetics & Dark/Light Mode:</strong> UI styled with Google Blue (<code>#4285F4</code>), Red (<code>#EA4335</code>), Yellow (<code>#FBBC04</code>), Green (<code>#34A853</code>) and full light/dark theme support.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- SECTION 2: UI/UX STATE MACHINE (v5.0) -->
+    <section id="ui-spec">
+      <h2>2. UI/UX Workflow & Carousel State Machine</h2>
+      <pre>
+┌────────────────────────────────────────────────────────────────────────┐
+│ STAGE 1: Google Theme & Brand Input Form (Light / Dark Mode Switch)   │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ User clicks "Synthesize"
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ STAGE 2: LIVE SYNTHESIS & CAROUSEL VIEW                                │
+│                                                                        │
+│ ┌────────────────────────────────────────────────────────────────────┐ │
+│ │ 🎯 PROMPT CAROUSEL (10s Autoscroll + Manual Controls)               │ │
+│ │ • Giant Number Display (e.g. 10)                                   │ │
+│ │ • Concept & Diegetic Number Embedding Descriptor                   │ │
+│ │ • Indicator Dots & Navigation Arrows                               │ │
+│ └────────────────────────────────────────────────────────────────────┘ │
+│ ┌────────────────────────────────────────────────────────────────────┐ │
+│ │ 📊 GOOGLE PROGRESS BAR (0% → 100% with live completed count)       │ │
+│ └────────────────────────────────────────────────────────────────────┘ │
+│ ┌────────────────────────────────────────────────────────────────────┐ │
+│ │ 🖼️ ONE-BY-ONE GENERATED IMAGES STREAM (No empty slots)              │ │
+│ │ (Card 10 appears → Card 9 appears → ... → All 10 ready)            │ │
+│ └────────────────────────────────────────────────────────────────────┘ │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ All 10 Images Completed & Approved
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ STAGE 3: Veo 3 Video Synthesis (10 × 4.0s)                             │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ STAGE 4: Interactive Waveform Timeline & Sub-Second Alignment          │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ STAGE 5: Master ffmpeg Concat & 30s Audio Sync Export                  │
+└────────────────────────────────────────────────────────────────────────┘
+      </pre>
+    </section>
+
+    <!-- SECTION 3: ACCEPTANCE CRITERIA -->
+    <section id="acceptance-criteria">
+      <h2>3. Acceptance Criteria (v5.0)</h2>
+      <ol>
+        <li>UI provides a seamless Dark / Light mode toggle with persistent state.</li>
+        <li>Google brand palette (Blue, Red, Yellow, Green) is harmoniously applied across buttons, badges, and progress meters.</li>
+        <li>During image generation, a rotating carousel displays the 10 prompts with large countdown numbers and 10s autoscroll.</li>
+        <li>The progress bar is placed directly below the carousel.</li>
+        <li>Zero empty placeholder image slots are shown during creation; images appear one by one as they finish.</li>
+        <li>Model configuration grounds to the latest Gemini Nano Banana / Imagen 3 model.</li>
+      </ol>
+    </section>
+  </div>
+</body>
+</html>

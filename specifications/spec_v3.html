@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CountdownMaker Specification v3.0 (EGM Phase E4)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --code-bg: #0b1120;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2.5rem 1.5rem;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    header {
+      border-bottom: 2px solid var(--surface-border);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      margin-bottom: 0.75rem;
+    }
+    .badge-v3 {
+      background: rgba(168, 85, 247, 0.15);
+      color: #c084fc;
+      border-color: rgba(168, 85, 247, 0.3);
+    }
+    h1 { font-size: 2.25rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem; }
+    .subtitle { color: var(--text-muted); font-size: 1.1rem; }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+    h2 { font-size: 1.5rem; color: var(--accent); margin-bottom: 1.25rem; }
+    h3 { font-size: 1.15rem; color: #f1f5f9; margin: 1.25rem 0 0.75rem 0; }
+    p, li { color: #cbd5e1; font-size: 0.95rem; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+    li { margin-bottom: 0.5rem; }
+    table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.9rem; }
+    th, td { border: 1px solid var(--surface-border); padding: 0.75rem 1rem; text-align: left; }
+    th { background: var(--code-bg); color: var(--accent); font-weight: 600; }
+    tr:nth-child(even) { background: rgba(15, 23, 42, 0.3); }
+    code, pre {
+      font-family: "JetBrains Mono", "Fira Code", Menlo, Monaco, Consolas, monospace;
+      background: var(--code-bg);
+      border-radius: 6px;
+      font-size: 0.875rem;
+    }
+    code { padding: 0.2rem 0.4rem; color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.2); }
+    pre { padding: 1.25rem; overflow-x: auto; border: 1px solid var(--surface-border); margin: 1rem 0; }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: rgba(56, 189, 248, 0.08);
+      padding: 1rem 1.25rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1rem 0;
+    }
+    .callout.defect-fix {
+      border-left-color: #c084fc;
+      background: rgba(168, 85, 247, 0.08);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge badge-v3">EGM Phase E4: Specification v3.0 (Production-Ready)</div>
+      <h1>CountdownMaker: 30-Second Cinematic Video Generator</h1>
+      <p class="subtitle">Full Architecture: Native Backend ffmpeg Service, Web Audio Waveform Scrubbing Sync, Hard-Clamped Sub-Second Slicing, and Deterministic Audio-Pad Termination</p>
+    </header>
+
+    <!-- SECTION 1: EXECUTIVE SUMMARY -->
+    <section id="executive-summary">
+      <h2>1. Executive Summary & Objective</h2>
+      <p>
+        <strong>CountdownMaker</strong> automates the creation of customized cinematic countdown videos (counting down sequentially from 10 to 1) synchronized to a fixed 30-second soundtrack located at <code>public/countdown/countdown_track.mp3</code>.
+      </p>
+      <div class="callout defect-fix">
+        <strong>v3.0 Key Hardened Specifications:</strong>
+        <ul>
+          <li><strong>DEF-01 Resolved (Native Backend ffmpeg Service):</strong> Master video rendering, concatenation, and transforms execute on the Node.js/Python backend utilizing native system <code>ffmpeg</code>, preventing browser WASM Out-Of-Memory (OOM) crashes.</li>
+          <li><strong>DEF-02 Resolved (Waveform & Master Scrubbing Engine):</strong> Web Audio API decodes the 30s soundtrack for waveform visualization. Master playhead scrubbing updates a single-viewport Master Timeline Player with active slot switching ($\tau_k \le t_{\text{playhead}} < \tau_{k+1}$).</li>
+          <li><strong>DEF-03 Resolved (Mathematical Clamp Invariants):</strong> Explicit bounding rules guarantee $0.50\text{s} \le d_k \le 4.00\text{s}$ and $t_{\text{start}} + d_k \le 4.00\text{s}$ to prevent ffmpeg negative/overflow argument faults.</li>
+          <li><strong>DEF-04 Resolved (Deterministic Audio Termination):</strong> For $T_{\text{total}} > 30.00\text{s}$, audio is padded with silence using <code>-af "apad=whole_dur=T_total"</code>; for $T_{\text{total}} \le 30.00\text{s}$, audio is clamped with a 0.5s fade-out (<code>afade=t=out:st=T_total-0.5:d=0.5</code>).</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- SECTION 2: MATHEMATICAL & LOGICAL FORMULAS -->
+    <section id="math-formulas">
+      <h2>2. Mathematical & Logical Execution Model (v3.0)</h2>
+      
+      <h3>2.1 Core Dimensions & Raw Constants</h3>
+      <ul>
+        <li><strong>Base Audio Duration:</strong> $T_{\text{audio}} = 30.00\text{s}$</li>
+        <li><strong>Slots:</strong> $N = 10$ slots ($k \in [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]$)</li>
+        <li><strong>Raw Video Duration per Slot:</strong> $D_{\text{raw}} = 4.000\text{s}$</li>
+        <li><strong>Allowed Duration Range per Slot:</strong> $d_k \in [0.500\text{s}, 4.000\text{s}]$</li>
+      </ul>
+
+      <h3>2.2 Deterministic Clamp Rules (DEF-03 Resolution)</h3>
+      <p>For any user input duration $d_{\text{input}}$ and mode:</p>
+      <div class="callout">
+        $$d_k = \max(0.500, \min(4.000, d_{\text{input}}))$$
+        $$\text{TRUNCATE\_FRONT:} \quad t_{\text{start}} = 4.000 - d_k, \quad t_{\text{end}} = 4.000$$
+        $$\text{TRUNCATE\_BACK:} \quad t_{\text{start}} = 0.000, \quad t_{\text{end}} = d_k$$
+        $$\text{SPEED\_UP:} \quad \text{pts\_factor} = \frac{d_k}{4.000}, \quad \text{filter: } \texttt{setpts=} (\text{pts\_factor}) \times \texttt{PTS}$$
+      </div>
+
+      <h3>2.3 Timeline Waveform Math & Single-Viewport Player Sync (DEF-02 Resolution)</h3>
+      <p>The timeline tracks cumulative slot offsets $\tau_k$:</p>
+      <pre><code>τ[10] = 0.000;
+for (let i = 9; i >= 1; i--) {
+  τ[i] = τ[i + 1] + d[i + 1];
+}
+const T_total = τ[1] + d[1];
+
+// Active Slot Determination during Playhead Scrubbing at time t:
+function getActiveSlotIndex(t) {
+  for (let k = 10; k >= 1; k--) {
+    if (t >= τ[k] && t < (τ[k] + d[k])) {
+      const localTime = (mode === 'SPEED_UP') 
+        ? (t - τ[k]) * (4.000 / d[k]) 
+        : (mode === 'TRUNCATE_FRONT' ? (4.000 - d[k]) + (t - τ[k]) : (t - τ[k]));
+      return { slotIndex: k, localTime };
+    }
+  }
+  return { slotIndex: 1, localTime: 4.000 };
+}</code></pre>
+
+      <h3>2.4 Master ffmpeg Audio-Video Assembly Pipeline (DEF-01 & DEF-04 Resolution)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Condition</th>
+            <th>Audio Filter Specification</th>
+            <th>Video Concat Specification</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>$T_{\text{total}} \ge 30.00\text{s}$</td>
+            <td><code>-af "apad=whole_dur=${T_total}"</code> (Pad track end with silence)</td>
+            <td>Normalized stream concat: <code>fps=30, scale=1920:1080, format=yuv420p</code></td>
+          </tr>
+          <tr>
+            <td>$T_{\text{total}} < 30.00\text{s}$</td>
+            <td><code>-af "atrim=0:${T_total},afade=t=out:st=${T_total-0.5}:d=0.5"</code></td>
+            <td>Normalized stream concat: <code>fps=30, scale=1920:1080, format=yuv420p</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- SECTION 3: ARCHITECTURE & DATA SCHEMAS -->
+    <section id="architecture">
+      <h2>3. Component Architecture & Data Schemas (v3.0)</h2>
+
+      <h3>3.1 End-to-End System Diagram</h3>
+      <pre>
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            FRONTEND (React + Vite)                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 1. Theme/Brand Input Form ──► Visual Anchor & Diegetic Prompts Preview      │
+│ 2. 10 Slot Cards ──► Image Review (Dual-Image Ingestion & Rollback)         │
+│ 3. Interactive Web Audio Waveform Multi-Track Timeline                      │
+│ 4. Single-Viewport Master Scrubbing Player (Active Slot Index Mapping)      │
+│ 5. Trigger Master Render API ───────────────────────────────────────────┐   │
+└─────────────────────────────────────────────────────────────────────────│───┘
+                                                                          │
+                                         HTTP POST /api/export-master     │
+                                                                          ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          BACKEND SERVICE (Node.js API)                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 1. Ingest 10 Video URIs + Per-Slot Temporal Transform Configs               │
+│ 2. Execute Native system `ffmpeg` per slot (Transforms + Normalization)     │
+│ 3. Execute Native `ffmpeg` Master Concat + Audio Pad/Fade Assembly          │
+│ 4. Return Final Rendered Master MP4 Path to Frontend                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+      </pre>
+
+      <h3>3.2 Complete TypeScript Schema</h3>
+      <pre><code>type TemporalMode = 'SPEED_UP' | 'PASSTHROUGH' | 'TRUNCATE_FRONT' | 'TRUNCATE_BACK';
+
+interface SlotTemporalConfig {
+  mode: TemporalMode;
+  targetDurationSeconds: number; // Clamped in [0.5, 4.0]
+  trimStartSeconds: number;
+  trimEndSeconds: number;
+}
+
+interface CountdownSlot {
+  index: number; // 10 down to 1
+  diegeticNumber: number;
+  sceneConcept: string;
+  imagePrompt: string;
+
+  // Image Generation State
+  currentImageUri: string | null;
+  historyImageUri: string | null; // N-1 rollback
+  isImageAccepted: boolean;
+  isImageLoading: boolean;
+  imageError: string | null;
+
+  // Refinement Parameters
+  customPromptOverride?: string;
+  brandReferenceImageUri?: string;
+
+  // Video Generation State
+  rawVideoUri: string | null; // 4.0s raw Veo output
+  isVideoLoading: boolean;
+  videoError: string | null;
+
+  // Temporal Alignment
+  temporalConfig: SlotTemporalConfig;
+  processedVideoUri: string | null;
+}</code></pre>
+    </section>
+
+    <!-- SECTION 4: ACCEPTANCE CRITERIA -->
+    <section id="acceptance-criteria">
+      <h2>4. Acceptance Criteria (v3.0 Production Standard)</h2>
+      <ol>
+        <li><strong>Diegetic Invariant:</strong> All 10 prompts generate scenes with physical numbers embedded into the environment geometry.</li>
+        <li><strong>Image Review & Rollback:</strong> Users can regenerate any slot with a custom prompt and/or brand reference image, with 1-click $N-1$ rollback.</li>
+        <li><strong>Waveform Timeline:</strong> Interactive timeline shows the 30s soundtrack waveform with 10 visual blocks and master scrubbing player.</li>
+        <li><strong>Sub-Second Trimming:</strong> Per-slot duration adjustments (0.5s–4.0s) respect hard boundary clamps.</li>
+        <li><strong>Native Backend Concat:</strong> Master video assembly executes via native system ffmpeg without browser tab memory exhaustion.</li>
+      </ol>
+    </section>
+  </div>
+</body>
+</html>
