@@ -13,6 +13,8 @@ interface HeaderProps {
   onModelChange: (model: ImageModelType) => void;
   isDarkMode: boolean;
   onToggleTheme: () => void;
+  authUser?: { email: string; name: string } | null;
+  onSignOut?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -24,6 +26,8 @@ export const Header: React.FC<HeaderProps> = ({
   onModelChange,
   isDarkMode,
   onToggleTheme,
+  authUser,
+  onSignOut,
 }) => {
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [showTestModal, setShowTestModal] = useState(false);
@@ -193,11 +197,23 @@ export const Header: React.FC<HeaderProps> = ({
           {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
         </button>
 
-        {/* Google Workspace Domain Lock Badge */}
-        <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-[11px] font-bold text-[#4285F4] dark:text-blue-300 shadow-sm" title="App locked strictly to @cloudspace.goog domain accounts">
-          <ShieldCheck className="w-3.5 h-3.5 text-[#34A853]" />
-          <span>cloudspace.goog Locked</span>
-        </div>
+        {/* Google Workspace Domain Lock Badge & Account */}
+        {authUser && (
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs shadow-sm">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#34A853]" />
+            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{authUser.email}</span>
+            {onSignOut && (
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors"
+                title="Sign out of domain session"
+              >
+                Sign Out
+              </button>
+            )}
+          </div>
+        )}
 
         {/* API Key Config Button */}
         <button

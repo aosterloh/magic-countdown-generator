@@ -33,7 +33,14 @@ export const App: React.FC = () => {
   const [authUser, setAuthUser] = useState<{ email: string; name: string } | null>(() => {
     try {
       const saved = localStorage.getItem('auth_user');
-      return saved ? JSON.parse(saved) : { email: 'aosterloh@cloudspace.goog', name: 'Alex Osterloh' };
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const email = (parsed?.email || '').toLowerCase();
+        if (email.endsWith('@cloudspace.goog') || email.endsWith('@google.com')) {
+          return parsed;
+        }
+      }
+      return null;
     } catch {
       return null;
     }
@@ -524,6 +531,8 @@ export const App: React.FC = () => {
         onModelChange={setSelectedModel}
         isDarkMode={isDarkMode}
         onToggleTheme={handleToggleTheme}
+        authUser={authUser}
+        onSignOut={handleSignOut}
       />
 
       {/* Main Content Area */}
