@@ -21,6 +21,7 @@ import { SlotCard } from './components/SlotCard';
 import { WaveformTimeline } from './components/WaveformTimeline';
 import { RefineModal } from './components/RefineModal';
 import { MasterExportModal } from './components/MasterExportModal';
+import { GoogleAuthGate } from './components/GoogleAuthGate';
 import { CountdownSlot, ImageModelType, AuthMode, SlotTemporalConfig } from './types';
 import { UNIVERSAL_STYLE_ANCHOR } from './utils/promptBuilder';
 import { calculateTimelineOffsets } from './utils/temporalMath';
@@ -28,6 +29,23 @@ import { calculateTimelineOffsets } from './utils/temporalMath';
 const API_BASE = window.location.port === '5173' ? 'http://localhost:3001' : '';
 
 export const App: React.FC = () => {
+  // Authentication State: Validated @cloudspace.goog or @google.com Account
+  const [authUser, setAuthUser] = useState<{ email: string; name: string } | null>(() => {
+    try {
+      const saved = localStorage.getItem('auth_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const email = (parsed?.email || '').toLowerCase();
+        if (email.endsWith('@cloudspace.goog') || email.endsWith('@google.com')) {
+          return parsed;
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  });
+
   // Theme State: Default to Light Mode
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('theme_mode');
@@ -488,6 +506,15 @@ export const App: React.FC = () => {
   const videosCompletedCount = slots.filter((s) => Boolean(s.rawVideoUri)).length;
   const allVideosReady = videosCompletedCount === 10;
   const generatedSlotsStream = slots.filter((s) => s.currentImageUri || s.isImageLoading);
+
+  const handleAuthenticate = (user: { email: string; name: string }) => {
+    setAuthUser(user);
+    localStorage.setItem('auth_user', JSON.stringify(user));
+  };
+
+  if (!authUser) {
+    return <GoogleAuthGate onAuthenticate={handleAuthenticate} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
