@@ -29,19 +29,42 @@ import { calculateTimelineOffsets } from './utils/temporalMath';
 const API_BASE = window.location.port === '5173' ? 'http://localhost:3001' : '';
 
 export const App: React.FC = () => {
-  // Authentication State: Validated @cloudspace.goog or @google.com Account
+  // Authentication State: Validated @cloudspace.goog or @google.com Account via Google OAuth SSO
   const [authUser, setAuthUser] = useState<{ email: string; name: string } | null>(() => {
+    // 1. Check URL parameters from Google OAuth callback redirect
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const authStatus = urlParams.get('auth');
+      const emailParam = urlParams.get('email');
+      const nameParam = urlParams.get('name');
+
+      if (authStatus === 'success' && emailParam) {
+        const cleanEmail = emailParam.trim().toLowerCase();
+        if (cleanEmail.endsWith('@cloudspace.goog') || cleanEmail.endsWith('@google.com')) {
+          const userObj = { email: cleanEmail, name: nameParam || cleanEmail.split('@')[0] };
+          localStorage.setItem('auth_user', JSON.stringify(userObj));
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return userObj;
+        }
+      }
+    } catch (e) {
+      console.warn('URL Auth parsing notice:', e);
+    }
+
+    // 2. Check verified stored session
     try {
       const saved = localStorage.getItem('auth_user');
       if (saved) {
         const parsed = JSON.parse(saved);
-        const email = (parsed?.email || '').toLowerCase();
+        const email = (parsed?.email || '').trim().toLowerCase();
         if (email.endsWith('@cloudspace.goog') || email.endsWith('@google.com')) {
           return parsed;
         }
       }
+      localStorage.removeItem('auth_user');
       return null;
     } catch {
+      localStorage.removeItem('auth_user');
       return null;
     }
   });
