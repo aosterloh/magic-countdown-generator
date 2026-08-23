@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Sparkles, RefreshCw, CheckCircle2, Wand2, Edit3, Check, ChevronRight } from 'lucide-react';
+import { Sparkles, RefreshCw, CheckCircle2, Wand2, Edit3, Check, ChevronRight, Video, ImageIcon, Eye } from 'lucide-react';
 import { CountdownSlot } from '../types';
 
 interface PromptReviewListProps {
   slots: CountdownSlot[];
   brandName: string;
   themeContext: string;
-  onUpdatePrompt: (slotIndex: number, newPrompt: string, newConcept?: string) => void;
+  onUpdatePrompt: (slotIndex: number, newPrompt: string, newConcept?: string, newVideoPrompt?: string) => void;
   onRecreatePrompt: (slotIndex: number) => Promise<void>;
   onToggleApprovePrompt: (slotIndex: number) => void;
   onApproveAllPrompts: () => void;
@@ -26,7 +26,9 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
   isGeneratingImages,
 }) => {
   const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
-  const [editingText, setEditingText] = useState('');
+  const [editingImageType, setEditingImageType] = useState<'image' | 'video'>('image');
+  const [editingImageText, setEditingImageText] = useState('');
+  const [editingVideoText, setEditingVideoText] = useState('');
 
   const numberBadges: Record<number, string> = {
     10: 'bg-[#4285F4] text-white',
@@ -44,13 +46,15 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
   const approvedCount = slots.filter((s) => s.isPromptApproved).length;
   const allApproved = approvedCount === slots.length;
 
-  const handleStartEdit = (slot: CountdownSlot) => {
+  const handleStartEdit = (slot: CountdownSlot, type: 'image' | 'video') => {
     setEditingSlotIndex(slot.index);
-    setEditingText(slot.imagePrompt);
+    setEditingImageType(type);
+    setEditingImageText(slot.imagePrompt);
+    setEditingVideoText(slot.videoPrompt || '');
   };
 
   const handleSaveEdit = (slotIndex: number) => {
-    onUpdatePrompt(slotIndex, editingText);
+    onUpdatePrompt(slotIndex, editingImageText, undefined, editingVideoText);
     setEditingSlotIndex(null);
   };
 
@@ -65,14 +69,14 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                Step 2: Review & Edit 10 Diegetic Prompts
+                Step 2: Review Coordinated Image & Video Reveal Prompts
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950 text-[#4285F4] border border-blue-200 dark:border-blue-800">
                 {approvedCount}/10 Approved
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Review, manually edit, or re-create any prompt concept before generating images.
+              The starting images conceal/subtly frame the number; the coordinated Veo 3 camera motion reveals it.
             </p>
           </div>
         </div>
@@ -119,14 +123,14 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
           return (
             <div
               key={slot.index}
-              className={`p-5 rounded-2xl border transition-all space-y-3 ${
+              className={`p-5 rounded-2xl border transition-all space-y-3.5 ${
                 slot.isPromptApproved
                   ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300/80 dark:border-emerald-800/80'
                   : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
               }`}
             >
-              {/* Top Row: Badge, Concept & Embedding, Actions */}
-              <div className="flex items-center justify-between gap-3">
+              {/* Top Row: Badge, Concept, Reveal Mechanism, Toolbar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span
                     className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shadow-md shrink-0 ${
@@ -139,16 +143,22 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
                     <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
                       {slot.sceneConcept || `Diegetic Shot #${slot.index}`}
                     </h3>
-                    {slot.objectEmbedding && (
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
                       <span className="text-[11px] text-[#4285F4] dark:text-blue-400 font-mono font-medium">
-                        Physical Number: #{slot.diegeticNumber} ({slot.objectEmbedding})
+                        Countdown #{slot.diegeticNumber}
                       </span>
-                    )}
+                      {slot.revealMechanism && (
+                        <span className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 text-[10px] font-semibold border border-purple-200 dark:border-purple-800/80 flex items-center gap-1">
+                          <Eye className="w-3 h-3 text-purple-500" />
+                          <span>Reveal: {slot.revealMechanism}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 {/* Card Toolbar */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 self-end sm:self-center">
                   <button
                     type="button"
                     onClick={() => onRecreatePrompt(slot.index)}
@@ -162,11 +172,11 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => (isEditing ? handleSaveEdit(slot.index) : handleStartEdit(slot))}
+                    onClick={() => (isEditing ? handleSaveEdit(slot.index) : handleStartEdit(slot, 'image'))}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs font-semibold transition-colors"
                   >
                     {isEditing ? <Check className="w-3 h-3 text-[#34A853]" /> : <Edit3 className="w-3 h-3 text-slate-500" />}
-                    <span>{isEditing ? 'Save Edit' : 'Edit Prompt'}</span>
+                    <span>{isEditing ? 'Save Edit' : 'Edit Prompts'}</span>
                   </button>
 
                   <button
@@ -184,15 +194,35 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
                 </div>
               </div>
 
-              {/* Prompt Text / Editable Area */}
+              {/* Coordinated Prompts View / Edit */}
               {isEditing ? (
-                <div className="space-y-2 pt-1">
-                  <textarea
-                    rows={4}
-                    value={editingText}
-                    onChange={(e) => setEditingText(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-[#4285F4] text-xs text-slate-800 dark:text-slate-200 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
+                <div className="space-y-3 pt-1">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                      <ImageIcon className="w-3 h-3 text-[#4285F4]" />
+                      <span>1. Starting Image Prompt (Plans Reveal / Number Concealed or Distant)</span>
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editingImageText}
+                      onChange={(e) => setEditingImageText(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-[#4285F4] text-xs text-slate-800 dark:text-slate-200 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                      <Video className="w-3 h-3 text-purple-500" />
+                      <span>2. Coordinated Veo 3 Video Motion (Reveals Number #{slot.diegeticNumber})</span>
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editingVideoText}
+                      onChange={(e) => setEditingVideoText(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-purple-500 text-xs text-slate-800 dark:text-slate-200 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    />
+                  </div>
+
                   <div className="flex justify-end gap-2">
                     <button
                       type="button"
@@ -204,15 +234,35 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
                     <button
                       type="button"
                       onClick={() => handleSaveEdit(slot.index)}
-                      className="px-4 py-1 rounded-lg bg-[#4285F4] text-white text-xs font-bold"
+                      className="px-4 py-1.5 rounded-lg bg-[#4285F4] text-white text-xs font-bold"
                     >
                       Save Changes
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 text-xs font-mono text-slate-600 dark:text-slate-400 leading-relaxed">
-                  {slot.imagePrompt}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                  {/* Image Prompt Box */}
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 space-y-1">
+                    <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1 uppercase tracking-wider">
+                      <ImageIcon className="w-3 h-3" />
+                      <span>Starting Image (Reveal Framing)</span>
+                    </div>
+                    <p className="text-xs font-mono text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3 hover:line-clamp-none">
+                      {slot.imagePrompt}
+                    </p>
+                  </div>
+
+                  {/* Video Motion Prompt Box */}
+                  <div className="p-3 rounded-xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-800/60 space-y-1">
+                    <div className="text-[10px] font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1 uppercase tracking-wider">
+                      <Video className="w-3 h-3" />
+                      <span>Veo 3 Motion (Number Reveal)</span>
+                    </div>
+                    <p className="text-xs font-mono text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3 hover:line-clamp-none">
+                      {slot.videoPrompt || `Camera push-in brings diegetic number '${slot.diegeticNumber}' into crisp focus.`}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -223,7 +273,7 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
       {/* Bottom Sticky Action Bar */}
       <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800/80">
         <div className="text-xs text-slate-500">
-          All 10 prompts are ready for synthesis with Gemini Nano Banana (2-worker parallel queue).
+          All 10 prompts are coordinated for starting image framing and dynamic Veo 3 camera reveal.
         </div>
         <button
           type="button"

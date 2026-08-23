@@ -186,7 +186,9 @@ export const App: React.FC = () => {
               ...slot,
               sceneConcept: promptData?.concept || slot.sceneConcept,
               objectEmbedding: promptData?.objectEmbedding || slot.objectEmbedding,
+              revealMechanism: promptData?.revealMechanism || slot.revealMechanism,
               imagePrompt: promptData?.imagePrompt || slot.imagePrompt,
+              videoPrompt: promptData?.videoPrompt || slot.videoPrompt,
               isPromptApproved: true,
               isPromptRecreating: false,
             };
@@ -206,13 +208,14 @@ export const App: React.FC = () => {
   };
 
   // 2. Prompt Review Handlers (Stage 2)
-  const handleUpdatePrompt = (slotIndex: number, newPrompt: string, newConcept?: string) => {
+  const handleUpdatePrompt = (slotIndex: number, newPrompt: string, newConcept?: string, newVideoPrompt?: string) => {
     setSlots((prev) =>
       prev.map((s) =>
         s.index === slotIndex
           ? {
               ...s,
               imagePrompt: newPrompt,
+              videoPrompt: newVideoPrompt !== undefined ? newVideoPrompt : s.videoPrompt,
               sceneConcept: newConcept || s.sceneConcept,
               isPromptApproved: true,
             }
@@ -247,7 +250,9 @@ export const App: React.FC = () => {
                   ...s,
                   sceneConcept: data.concept,
                   objectEmbedding: data.objectEmbedding,
+                  revealMechanism: data.revealMechanism,
                   imagePrompt: data.imagePrompt,
+                  videoPrompt: data.videoPrompt,
                   isPromptApproved: true,
                   isPromptRecreating: false,
                 }

@@ -85,8 +85,15 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight mt-0.5">
               {slot.sceneConcept || `Diegetic Shot #${slot.index}`}
             </h3>
+            {slot.revealMechanism && (
+              <p className="text-[11px] text-purple-600 dark:text-purple-400 font-medium mt-0.5">
+                🎬 Reveal: {slot.revealMechanism}
+              </p>
+            )}
           </div>
-        </div>        {/* Quick Accept / Auto-Video Button */}
+        </div>
+
+        {/* Quick Accept / Auto-Video Button */}
         <div className="flex items-center gap-2.5 self-end sm:self-center">
           <button
             type="button"
@@ -135,7 +142,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             <div className="flex items-center justify-between px-2 py-1 z-10">
               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-slate-900/90 text-slate-300 border border-slate-700 flex items-center gap-1">
                 <ImageIcon className="w-3 h-3 text-[#4285F4]" />
-                <span>Input Frame (30%)</span>
+                <span>Starting Frame (30%)</span>
               </span>
             </div>
             <div className="flex-1 flex items-center justify-center min-h-[180px]">
@@ -152,7 +159,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             <div className="flex items-center justify-between px-2 py-1 z-10">
               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-purple-900/90 text-purple-200 border border-purple-700 flex items-center gap-1">
                 <Video className="w-3 h-3 text-purple-400" />
-                <span>Veo 3 Video (70% Focus)</span>
+                <span>Veo 3 Reveal Video (70% Focus)</span>
               </span>
               <button
                 type="button"
@@ -196,29 +203,45 @@ export const SlotCard: React.FC<SlotCardProps> = ({
       )}
 
       {/* Prompt Details (Expandable) */}
-      {slot.imagePrompt && (
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+      {(slot.imagePrompt || slot.videoPrompt) && (
+        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 text-[#4285F4]" />
-              <span>Prompt Used for Generation</span>
+              <span>Coordinated Prompts (Image Framing & Video Reveal)</span>
             </div>
             <button
               type="button"
               onClick={() => setShowFullPrompt(!showFullPrompt)}
               className="text-xs text-[#4285F4] hover:underline font-semibold flex items-center gap-1"
             >
-              <span>{showFullPrompt ? 'Collapse Prompt' : 'View Full Prompt'}</span>
+              <span>{showFullPrompt ? 'Collapse Details' : 'View Prompts'}</span>
               {showFullPrompt ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
           </div>
-          <p
-            className={`text-xs text-slate-600 dark:text-slate-400 font-mono leading-relaxed ${
-              showFullPrompt ? '' : 'line-clamp-2'
-            }`}
-          >
-            {slot.imagePrompt}
-          </p>
+
+          <div className={`space-y-2.5 ${showFullPrompt ? '' : 'line-clamp-2'}`}>
+            {slot.imagePrompt && (
+              <div>
+                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider block mb-0.5">
+                  1. Starting Image Prompt:
+                </span>
+                <p className="text-xs text-slate-600 dark:text-slate-400 font-mono leading-relaxed">
+                  {slot.imagePrompt}
+                </p>
+              </div>
+            )}
+            {slot.videoPrompt && (
+              <div>
+                <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider block mb-0.5">
+                  2. Coordinated Veo 3 Motion (Number Reveal):
+                </span>
+                <p className="text-xs text-slate-600 dark:text-slate-400 font-mono leading-relaxed">
+                  {slot.videoPrompt}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

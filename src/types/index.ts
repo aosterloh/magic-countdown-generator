@@ -20,7 +20,9 @@ export interface CountdownSlot {
   diegeticNumber: number;
   sceneConcept: string;
   objectEmbedding?: string;
-  imagePrompt: string;
+  revealMechanism?: string; // How the number is revealed via motion / camera
+  imagePrompt: string;      // Scene framing planning for reveal (hidden/distant number)
+  videoPrompt?: string;     // Coordinated Veo 3 camera motion revealing the number
 
   // Prompt Review State
   isPromptApproved: boolean;

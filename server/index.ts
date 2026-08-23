@@ -5,7 +5,12 @@ import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
 import dotenv from 'dotenv';
-import { buildDiegeticPrompt, UNIVERSAL_STYLE_ANCHOR } from '../src/utils/promptBuilder';
+import {
+  buildDiegeticPrompt,
+  buildRevealImagePrompt,
+  buildCoordinatedVideoPrompt,
+  UNIVERSAL_STYLE_ANCHOR,
+} from '../src/utils/promptBuilder';
 import { generateSingleSlotFFmpegArgs, generateMasterConcatFFmpegArgs } from '../src/utils/ffmpegBuilder';
 import { calculateTimelineOffsets } from '../src/utils/temporalMath';
 import { SlotTemporalConfig } from '../src/types';
@@ -328,21 +333,30 @@ app.post('/api/generate-diegetic-prompts', requireCloudspaceDomain, async (req, 
     const creds = await getAdcCredentials();
     const key = apiKey || process.env.GEMINI_API_KEY;
 
-    addLog('INFO', 'GEMINI_AI', `Generating Diegetic Prompts for brand "${brandName}"...`);
+    addLog('INFO', 'GEMINI_AI', `Generating Diegetic Prompts with reveal strategy for brand "${brandName}"...`);
 
-    const promptText = `You are a world-class cinematographer and prompt director.
-Generate exactly 10 distinct, photorealistic, cinematic video/image generation concepts counting down sequentially from 10 down to 1 tailored for the customer brand "${brandName}" and theme "${themeContext}".
+    const promptText = `You are a world-class visual effects director, cinematographer, and generative video prompt director.
+Generate exactly 10 paired (Starting Image Prompt + Veo 3 Video Motion Prompt) concepts counting down sequentially from 10 down to 1 tailored for the customer brand "${brandName}" and theme "${themeContext}".
 
-RULES:
-1. Environmental Diegesis: Every number (from 10 down to 1) MUST exist purely as a natural, physical element in the scene (e.g. gauge markings, illuminated laser engravings, chassis serial numbers, turbine dial, digital instrument cluster, warehouse bay number). NEVER use floating graphic overlays.
-2. Invariant Style: Include 35mm anamorphic, cinematic 8k, photorealistic, natural lighting.
-3. Return ONLY a valid JSON array of 10 objects in this format:
+CRITICAL CINEMATIC NUMBER REVEAL DIRECTIVE:
+1. STARTING IMAGE COMPOSITION (imagePrompt):
+   - In most starting images (7 to 8 out of 10), the number MUST NOT be immediately visible. Establish rich mechanical textures, atmospheric depth, and foreground occluding structures (e.g. guide vanes, carbon fiber shrouds, pipes, atmospheric steam/shadows), specifically framing the scene to plan for revealing the number later through video camera motion.
+   - In 2 to 3 images only, the number may appear subtle in the distance, out-of-focus background bokeh, or partially obscured by shadows—never jumping in the spectator's eyes.
+   - NO floating or graphic numbers. Authentic physical diegetic materials only.
+
+2. COORDINATED VEO 3 VIDEO MOTION (videoPrompt & revealMechanism):
+   - Each slot MUST have a seamlessly coordinated 4-second video motion prompt that dynamically and organically reveals the physical diegetic number (e.g. camera continuous push-in past foreground obstructions, dollying into the compressor core to reveal the laser-engraved numeral, rack focus bringing distant serial marking into crisp focus, opening valve parting to uncover the stamped numeral).
+
+Return ONLY a valid JSON array of 10 objects:
 [
   {
     "index": 10,
     "diegeticNumber": 10,
-    "concept": "A sleek illuminated turbine power gauge",
-    "objectEmbedding": "etched titanium power gauge marking '10'"
+    "concept": "Aerospace titanium compressor intake chamber with foreground carbon fiber guide vanes",
+    "objectEmbedding": "laser-etched power rating numeral '10' on the inner titanium rotor casing",
+    "revealMechanism": "Camera pushes in past foreground carbon fiber vanes, dollying deep into the compressor hub to bring the laser-etched numeral '10' into sharp, luminous focus",
+    "imagePrompt": "Cinematic 35mm anamorphic wide shot establishing aerospace titanium compressor intake chamber...",
+    "videoPrompt": "4-second smooth 60fps cinematic camera move pushing past foreground carbon fiber vanes..."
   }
 ]`;
 
@@ -370,9 +384,11 @@ RULES:
               const parsed = JSON.parse(cleaned);
               const enriched = parsed.map((item: any) => ({
                 ...item,
-                imagePrompt: buildDiegeticPrompt(item.diegeticNumber, item.concept, item.objectEmbedding, brandName, themeContext, UNIVERSAL_STYLE_ANCHOR),
+                imagePrompt: item.imagePrompt || buildRevealImagePrompt(item.diegeticNumber, item.concept, item.objectEmbedding, brandName, themeContext, UNIVERSAL_STYLE_ANCHOR),
+                videoPrompt: item.videoPrompt || buildCoordinatedVideoPrompt(item.diegeticNumber, item.concept, item.objectEmbedding, item.revealMechanism || 'Camera pushes into scene', brandName),
+                revealMechanism: item.revealMechanism || `Camera push-in reveals number '${item.diegeticNumber}'`,
               }));
-              addLog('SUCCESS', 'GEMINI_AI', `Successfully synthesized 10 diegetic prompts using ${m}`);
+              addLog('SUCCESS', 'GEMINI_AI', `Successfully synthesized 10 reveal-coordinated diegetic prompts using ${m}`);
               return res.json({ success: true, prompts: enriched, auth: 'API_KEY', model: m });
             }
           }
@@ -382,18 +398,68 @@ RULES:
       }
     }
 
-    // Procedural Fallback Prompts
+    // Procedural Fallback Prompts with Coordinated Reveal Framing
     const concepts = [
-      { num: 10, concept: `Aerospace turbine throttle quadrant for ${brandName}`, embed: "etched titanium power gauge marking '10'" },
-      { num: 9, concept: `High-precision robotic fabrication arm in ${brandName} laboratory`, embed: "laser-engraved robotic joint calibration stamp '09'" },
-      { num: 8, concept: `Optoelectronic quantum compute cryo-chamber`, embed: "cryogenic manifold pressure display reading '8.0'" },
-      { num: 7, concept: `Autonomous vehicle navigation LIDAR dome`, embed: "embossed serial indicator 'UNIT-7'" },
-      { num: 6, concept: `Spacecraft launch telemetry dashboard`, embed: "illuminated analog pressure dial needle resting on '6'" },
-      { num: 5, concept: `Fiber-optic high-frequency routing junction`, embed: "backlit server cluster rack node 'CH-05'" },
-      { num: 4, concept: `Formula-1 telemetry steering wheel display`, embed: "digital OLED rev counter indicator gear '4'" },
-      { num: 3, concept: `Deep-sea subsea research vessel cockpit`, embed: "depth gauge analog bezel stamped with depth mark '3'" },
-      { num: 2, concept: `Hypersonic wind tunnel test model`, embed: "mach number sensor display illuminated at 'M-2'" },
-      { num: 1, concept: `Master engine ignition activation switch`, embed: "golden primary ignition toggle marked 'CORE 1'" },
+      {
+        num: 10,
+        concept: `Aerospace turbine throttle intake with foreground carbon fiber guide vanes for ${brandName}`,
+        embed: "laser-etched power gauge marking '10' on the internal rotor",
+        reveal: "Camera pushes past the foreground carbon fiber vanes, dollying deep into the compressor hub to bring the laser-etched numeral '10' into sharp, luminous focus",
+      },
+      {
+        num: 9,
+        concept: `High-precision robotic fabrication cell in ${brandName} laboratory`,
+        embed: "laser-engraved joint calibration stamp '09' on the articulating arm",
+        reveal: "Foreground robotic arm articulates upwards, uncovering the precision calibration stamp '09' as the camera tracks along the titanium limb",
+      },
+      {
+        num: 8,
+        concept: `Optoelectronic quantum compute cryo-chamber with frost-covered manifold`,
+        embed: "digital manifold pressure display reading '8.0'",
+        reveal: "Camera rack-focuses past swirling cryogenic condensation vapor, bringing the glowing blue '8.0' digital readout into crisp contrast",
+      },
+      {
+        num: 7,
+        concept: `Autonomous telemetry LIDAR sensor dome assembly`,
+        embed: "embossed serial indicator 'UNIT-7' on the spinning sensor base",
+        reveal: "Camera circles around the rotating LIDAR dome, catching dynamic studio light reflections that illuminate the embossed 'UNIT-7' serial mark",
+      },
+      {
+        num: 6,
+        concept: `Spacecraft launch propulsion telemetry dashboard`,
+        embed: "analog pressure dial needle sweeping across marker '6'",
+        reveal: "Camera slowly tracks right across dark instrument gauges as amber backlighting sweeps across the dial, highlighting the needle resting at '6'",
+      },
+      {
+        num: 5,
+        concept: `High-density fiber-optic server cluster rack array`,
+        embed: "illuminated server rack node marker 'CH-05'",
+        reveal: "Camera glides through the server rack aisle as optical data pulses flash, revealing the illuminated node identifier 'CH-05'",
+      },
+      {
+        num: 4,
+        concept: `Formula-1 telemetry steering wheel cockpit console for ${brandName}`,
+        embed: "digital OLED gear indicator displaying gear '4'",
+        reveal: "Camera dollies forward from the driver's perspective past the cockpit rim as the high-contrast OLED screen illuminates with digital gear '4'",
+      },
+      {
+        num: 3,
+        concept: `Deep-sea high-pressure exploration vessel cockpit`,
+        embed: "stamped depth gauge bezel marking '3' in marine brass",
+        reveal: "Camera shifts past the reinforced viewport frame, catching the exterior floodlight that highlights the stamped depth mark '3'",
+      },
+      {
+        num: 2,
+        concept: `Hypersonic wind-tunnel aerodynamics model with supersonic shockwave lighting`,
+        embed: "mach sensor indicator illuminated at 'M-2'",
+        reveal: "Camera pushes forward along the aerodynamic leading edge as wind-tunnel laser telemetry illuminates the glowing 'M-2' mach indicator",
+      },
+      {
+        num: 1,
+        concept: `Master engine ignition activation console for ${brandName}`,
+        embed: "golden primary ignition toggle switch stamped 'CORE 1'",
+        reveal: "Camera executes a rapid cinematic push-in toward the guarded ignition switch as safety louvers retract, revealing the golden toggle marked 'CORE 1'",
+      },
     ];
 
     const proceduralPrompts = concepts.map((c) => ({
@@ -401,10 +467,12 @@ RULES:
       diegeticNumber: c.num,
       concept: c.concept,
       objectEmbedding: c.embed,
-      imagePrompt: buildDiegeticPrompt(c.num, c.concept, c.embed, brandName, themeContext, UNIVERSAL_STYLE_ANCHOR),
+      revealMechanism: c.reveal,
+      imagePrompt: buildRevealImagePrompt(c.num, c.concept, c.embed, brandName, themeContext, UNIVERSAL_STYLE_ANCHOR),
+      videoPrompt: buildCoordinatedVideoPrompt(c.num, c.concept, c.embed, c.reveal, brandName),
     }));
 
-    addLog('INFO', 'GEMINI_AI', 'Generated 10 procedural diegetic prompts');
+    addLog('INFO', 'GEMINI_AI', 'Generated 10 procedural reveal-coordinated prompts');
     return res.json({ success: true, prompts: proceduralPrompts, auth: 'PROCEDURAL' });
   } catch (err: any) {
     addLog('ERROR', 'GEMINI_AI', 'Error generating prompts: ' + err.message);
@@ -412,23 +480,29 @@ RULES:
   }
 });
 
-// 1.1 Re-create single diegetic prompt (Gemini 2.5 Flash)
+// 1.1 Re-create single diegetic prompt with Coordinated Reveal (Gemini 2.5 Flash)
 app.post('/api/recreate-prompt', requireCloudspaceDomain, async (req, res) => {
   try {
     const { diegeticNumber, brandName = 'Porsche Motorsport', themeContext = 'Automotive telemetry laboratory', apiKey } = req.body;
     const key = apiKey || process.env.GEMINI_API_KEY;
 
-    addLog('INFO', 'GEMINI_AI', `Re-creating creative prompt for Shot #${diegeticNumber} (${brandName})...`);
+    addLog('INFO', 'GEMINI_AI', `Re-creating coordinated reveal prompt for Shot #${diegeticNumber} (${brandName})...`);
 
-    const promptText = `You are a world-class cinematographer and prompt director.
-Generate ONE distinct, creative, photorealistic, cinematic image concept for a countdown scene representing the physical number "${diegeticNumber}" tailored for the brand "${brandName}" and theme "${themeContext}".
-The number "${diegeticNumber}" MUST exist as a natural, physical, diegetic element within the scene object or machinery (e.g. gauge, stamped metal, illuminated OLED indicator, engine serial engraving).
+    const promptText = `You are a world-class visual effects director, cinematographer, and generative video prompt director.
+Generate ONE distinct, creative, photorealistic, cinematic paired (Starting Image Prompt + Veo 3 Video Motion Prompt) concept representing the physical countdown number "${diegeticNumber}" tailored for "${brandName}" and "${themeContext}".
+
+CRITICAL CINEMATIC REVEAL RULES:
+1. STARTING IMAGE (imagePrompt): The starting image MUST NOT have number "${diegeticNumber}" jumping in the spectator's eyes. It establishes machinery, depth, and foreground occlusion (vanes, shrouds, steam, shadow) planning for the reveal.
+2. VEO 3 VIDEO (videoPrompt & revealMechanism): A 4-second continuous camera motion (push-in, pan, rack focus, or machinery articulation) that dynamically reveals the physically embedded number "${diegeticNumber}".
 
 Return ONLY valid JSON in this exact format:
 {
   "diegeticNumber": ${diegeticNumber},
-  "concept": "A creative description of the physical object/scene",
-  "objectEmbedding": "specific physical embedding description of number '${diegeticNumber}'"
+  "concept": "A creative description of the physical scene and machinery",
+  "objectEmbedding": "specific physical embedding description of number '${diegeticNumber}'",
+  "revealMechanism": "specific camera/machinery movement that reveals number '${diegeticNumber}' during the video",
+  "imagePrompt": "Cinematic wide/medium shot establishing...",
+  "videoPrompt": "4-second smooth 60fps cinematic camera move..."
 }`;
 
     if (key) {
@@ -451,7 +525,7 @@ Return ONLY valid JSON in this exact format:
           if (rawResponse) {
             const cleaned = rawResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
             const parsed = JSON.parse(cleaned);
-            const imagePrompt = buildDiegeticPrompt(
+            const imagePrompt = parsed.imagePrompt || buildRevealImagePrompt(
               diegeticNumber,
               parsed.concept,
               parsed.objectEmbedding,
@@ -459,13 +533,22 @@ Return ONLY valid JSON in this exact format:
               themeContext,
               UNIVERSAL_STYLE_ANCHOR
             );
-            addLog('SUCCESS', 'GEMINI_AI', `Re-created prompt for Shot #${diegeticNumber}`);
+            const videoPrompt = parsed.videoPrompt || buildCoordinatedVideoPrompt(
+              diegeticNumber,
+              parsed.concept,
+              parsed.objectEmbedding,
+              parsed.revealMechanism || 'Camera pushes in to reveal number',
+              brandName
+            );
+            addLog('SUCCESS', 'GEMINI_AI', `Re-created reveal-coordinated prompt for Shot #${diegeticNumber}`);
             return res.json({
               success: true,
               diegeticNumber,
               concept: parsed.concept,
               objectEmbedding: parsed.objectEmbedding,
+              revealMechanism: parsed.revealMechanism,
               imagePrompt,
+              videoPrompt,
             });
           }
         }
@@ -475,9 +558,10 @@ Return ONLY valid JSON in this exact format:
     }
 
     // Procedural fallback
-    const fallbackConcept = `Custom high-tech telemetry module for ${brandName}`;
+    const fallbackConcept = `Custom telemetry chamber with foreground carbon louvers for ${brandName}`;
     const fallbackEmbed = `illuminated titanium indicator badge '${diegeticNumber}'`;
-    const fallbackPrompt = buildDiegeticPrompt(
+    const fallbackReveal = `Camera pushes smoothly past the foreground louvers to bring the illuminated '${diegeticNumber}' into crisp focus`;
+    const fallbackImagePrompt = buildRevealImagePrompt(
       diegeticNumber,
       fallbackConcept,
       fallbackEmbed,
@@ -485,13 +569,22 @@ Return ONLY valid JSON in this exact format:
       themeContext,
       UNIVERSAL_STYLE_ANCHOR
     );
+    const fallbackVideoPrompt = buildCoordinatedVideoPrompt(
+      diegeticNumber,
+      fallbackConcept,
+      fallbackEmbed,
+      fallbackReveal,
+      brandName
+    );
 
     return res.json({
       success: true,
       diegeticNumber,
       concept: fallbackConcept,
       objectEmbedding: fallbackEmbed,
-      imagePrompt: fallbackPrompt,
+      revealMechanism: fallbackReveal,
+      imagePrompt: fallbackImagePrompt,
+      videoPrompt: fallbackVideoPrompt,
     });
   } catch (err: any) {
     addLog('ERROR', 'GEMINI_AI', 'Error in recreate-prompt: ' + err.message);
