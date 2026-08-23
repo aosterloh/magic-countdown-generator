@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Key, Activity, Sun, Moon, Sparkles, ChevronDown, ExternalLink, CheckCircle2, X, Terminal, RefreshCw, Image as ImageIcon } from 'lucide-react';
+import { Key, Activity, Sun, Moon, Sparkles, ChevronDown, ExternalLink, CheckCircle2, X, Terminal, RefreshCw, Image as ImageIcon, ShieldCheck } from 'lucide-react';
 import { ImageModelType, AuthMode } from '../types';
 import { getMediaUrl } from '../utils/media';
 
@@ -192,6 +192,12 @@ export const Header: React.FC<HeaderProps> = ({
         >
           {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
         </button>
+
+        {/* Google Workspace Domain Lock Badge */}
+        <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-[11px] font-bold text-[#4285F4] dark:text-blue-300 shadow-sm" title="App locked strictly to @cloudspace.goog domain accounts">
+          <ShieldCheck className="w-3.5 h-3.5 text-[#34A853]" />
+          <span>cloudspace.goog Locked</span>
+        </div>
 
         {/* API Key Config Button */}
         <button

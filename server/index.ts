@@ -134,6 +134,99 @@ async function getAdcCredentials(): Promise<{ token: string; project: string; ac
   return { token, project, account };
 }
 
+// Google OAuth2 Domain Verification Helper (@cloudspace.goog)
+const ALLOWED_DOMAIN = 'cloudspace.goog';
+
+async function verifyGoogleToken(token: string): Promise<{ valid: boolean; email?: string; name?: string; picture?: string; error?: string }> {
+  try {
+    const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
+    if (!res.ok) {
+      const errText = await res.text();
+      return { valid: false, error: `Invalid Google token: ${errText}` };
+    }
+    const data = await res.json();
+    const email = data.email || '';
+    const hd = data.hd || '';
+
+    if (hd !== ALLOWED_DOMAIN && !email.endsWith(`@${ALLOWED_DOMAIN}`)) {
+      return {
+        valid: false,
+        email,
+        error: `Access Denied: Account '${email}' does not belong to the authorized '${ALLOWED_DOMAIN}' domain.`,
+      };
+    }
+
+    return {
+      valid: true,
+      email,
+      name: data.name || email.split('@')[0],
+      picture: data.picture,
+    };
+  } catch (err: any) {
+    return { valid: false, error: err.message };
+  }
+}
+
+// Authentication & Domain Status Endpoint
+app.get('/api/auth/me', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
+  if (token && token.length > 50) {
+    const verifyResult = await verifyGoogleToken(token);
+    if (verifyResult.valid) {
+      return res.json({
+        authenticated: true,
+        email: verifyResult.email,
+        name: verifyResult.name,
+        picture: verifyResult.picture,
+        domain: ALLOWED_DOMAIN,
+        authType: 'GOOGLE_OIDC',
+      });
+    }
+  }
+
+  // Fallback: Default to Active GCP Workspace / ADC User (aosterloh@cloudspace.goog)
+  const creds = await getAdcCredentials();
+  const isCloudspace = creds.account.endsWith(`@${ALLOWED_DOMAIN}`);
+
+  return res.json({
+    authenticated: isCloudspace,
+    email: creds.account || `aosterloh@${ALLOWED_DOMAIN}`,
+    name: (creds.account || 'Alex Osterloh').split('@')[0],
+    domain: ALLOWED_DOMAIN,
+    project: creds.project,
+    authType: 'ADC_WORKSPACE',
+  });
+});
+
+// Domain Lock Protection Middleware for Generation Endpoints
+async function requireCloudspaceDomain(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
+  if (token && token.length > 50) {
+    const verifyResult = await verifyGoogleToken(token);
+    if (!verifyResult.valid) {
+      addLog('WARN', 'ADC_AUTH', `Blocked non-domain request: ${verifyResult.error}`);
+      return res.status(403).json({ success: false, error: verifyResult.error });
+    }
+    return next();
+  }
+
+  // Check active server ADC account
+  const creds = await getAdcCredentials();
+  if (creds.account && !creds.account.endsWith(`@${ALLOWED_DOMAIN}`)) {
+    addLog('WARN', 'ADC_AUTH', `Blocked server execution: Account ${creds.account} is not in @${ALLOWED_DOMAIN}`);
+    return res.status(403).json({
+      success: false,
+      error: `Access Denied: Server environment is bound to non-authorized account ${creds.account}. Must use @${ALLOWED_DOMAIN}.`,
+    });
+  }
+
+  next();
+}
+
 // Logs API Endpoint
 app.get('/api/logs', (_req, res) => {
   return res.json({ success: true, logs: serverLogs });
@@ -148,6 +241,7 @@ app.get('/api/adc-status', async (_req, res) => {
       account: creds.account,
       project: creds.project,
       hasToken: Boolean(creds.token),
+      domain: ALLOWED_DOMAIN,
     });
   } catch (err: any) {
     return res.json({
@@ -155,12 +249,13 @@ app.get('/api/adc-status', async (_req, res) => {
       account: 'aosterloh@cloudspace.goog',
       project: 'aosterloh-cs-muc',
       hasToken: true,
+      domain: ALLOWED_DOMAIN,
     });
   }
 });
 
 // 1. Generate Diegetic Prompts (Gemini 2.5 Flash via API Key or ADC)
-app.post('/api/generate-diegetic-prompts', async (req, res) => {
+app.post('/api/generate-diegetic-prompts', requireCloudspaceDomain, async (req, res) => {
   try {
     const { brandName = 'Porsche Motorsport', themeContext = 'Automotive telemetry laboratory', apiKey, authMode = 'ADC' } = req.body;
     const creds = await getAdcCredentials();
@@ -251,7 +346,7 @@ RULES:
 });
 
 // 1.1 Re-create single diegetic prompt (Gemini 2.5 Flash)
-app.post('/api/recreate-prompt', async (req, res) => {
+app.post('/api/recreate-prompt', requireCloudspaceDomain, async (req, res) => {
   try {
     const { diegeticNumber, brandName = 'Porsche Motorsport', themeContext = 'Automotive telemetry laboratory', apiKey } = req.body;
     const key = apiKey || process.env.GEMINI_API_KEY;
@@ -338,7 +433,7 @@ Return ONLY valid JSON in this exact format:
 });
 
 // 2. Generate Image for Slot (Gemini 2.5 Flash Image / Nano Banana)
-app.post('/api/generate-image', async (req, res) => {
+app.post('/api/generate-image', requireCloudspaceDomain, async (req, res) => {
   try {
     const { slotIndex, prompt, brandName = 'Porsche Motorsport', apiKey } = req.body;
     const filename = `slot_${slotIndex}_${Date.now()}.png`;
@@ -406,7 +501,7 @@ app.post('/api/generate-image', async (req, res) => {
 });
 
 // Test Gemini API Diagnostic Endpoint (Single-Shot Direct Image Test)
-app.post('/api/test-gemini-api', async (req, res) => {
+app.post('/api/test-gemini-api', requireCloudspaceDomain, async (req, res) => {
   try {
     const { prompt, apiKey } = req.body;
     const testPrompt = prompt || `A cinematic close-up of Aerospace turbine throttle quadrant for Porsche Motorsport with number 10 engraved`;
@@ -502,7 +597,7 @@ app.post('/api/test-gemini-api', async (req, res) => {
 });
 
 // 3. Refine Nano Banana Shot (Dual-Image Ingestion)
-app.post('/api/refine-image', upload.fields([{ name: 'brandReference', maxCount: 1 }]), async (req, res) => {
+app.post('/api/refine-image', requireCloudspaceDomain, upload.fields([{ name: 'brandReference', maxCount: 1 }]), async (req, res) => {
   try {
     const slotIndex = parseInt(req.body.slotIndex, 10);
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
@@ -525,7 +620,7 @@ app.post('/api/refine-image', upload.fields([{ name: 'brandReference', maxCount:
 });
 
 // 4. Generate Veo 3 Video (4.0s Image-to-Video Synthesis with Dynamic Push-in Camera Motion)
-app.post('/api/generate-video', async (req, res) => {
+app.post('/api/generate-video', requireCloudspaceDomain, async (req, res) => {
   try {
     const { slotIndex, imageUri } = req.body;
     if (!imageUri) {
@@ -570,7 +665,7 @@ app.post('/api/generate-video', async (req, res) => {
 });
 
 // 5. Process Temporal Alignment (FFmpeg Speed/Trim for Veo 3 Video)
-app.post('/api/process-temporal-video', async (req, res) => {
+app.post('/api/process-temporal-video', requireCloudspaceDomain, async (req, res) => {
   try {
     const { slotIndex, rawVideoUri, temporalConfig } = req.body as {
       slotIndex: number;
@@ -601,7 +696,7 @@ app.post('/api/process-temporal-video', async (req, res) => {
 });
 
 // 6. Master Export (Concat 10 slots + 30s Audio Track Mix)
-app.post('/api/export-master', async (req, res) => {
+app.post('/api/export-master', requireCloudspaceDomain, async (req, res) => {
   try {
     const { slotsConfig } = req.body as {
       slotsConfig: {
