@@ -317,30 +317,6 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               <span>Rollback (N-1)</span>
             </button>
           )}
-
-          {slot.currentImageUri && (
-            <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => onGenerateVideo(slot.index, 'FAST_720P')}
-                disabled={slot.isVideoLoading}
-                className="flex items-center gap-1.5 py-2.5 px-3.5 rounded-2xl bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-950/70 text-purple-700 dark:text-purple-300 text-xs font-semibold border border-purple-200 dark:border-purple-800 transition-colors disabled:opacity-40"
-              >
-                <Video className="w-3.5 h-3.5 text-purple-500" />
-                <span>⚡ Fast 720p</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onGenerateVideo(slot.index, 'FULL_4K')}
-                disabled={slot.isVideoLoading}
-                className="flex items-center gap-1.5 py-2.5 px-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-950/70 text-amber-700 dark:text-amber-300 text-xs font-semibold border border-amber-200 dark:border-amber-800 transition-colors disabled:opacity-40"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>🌟 Full 4K</span>
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -21,6 +21,7 @@ import { SlotCard } from './components/SlotCard';
 import { WaveformTimeline } from './components/WaveformTimeline';
 import { RefineModal } from './components/RefineModal';
 import { MasterExportModal } from './components/MasterExportModal';
+import { VideoQualityModal } from './components/VideoQualityModal';
 import { GoogleAuthGate } from './components/GoogleAuthGate';
 import { CountdownSlot, ImageModelType, AuthMode, SlotTemporalConfig, VideoQualityMode, JobSummary } from './types';
 import { UNIVERSAL_STYLE_ANCHOR } from './utils/promptBuilder';
@@ -107,6 +108,7 @@ export const App: React.FC = () => {
   // Modal States
   const [activeRefineSlot, setActiveRefineSlot] = useState<CountdownSlot | null>(null);
   const [previewVideoUri, setPreviewVideoUri] = useState<string | null>(null);
+  const [showQualityModal, setShowQualityModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [isExportingMaster, setIsExportingMaster] = useState(false);
   const [masterVideoUri, setMasterVideoUri] = useState<string | null>(null);
@@ -973,10 +975,7 @@ export const App: React.FC = () => {
                 {allImagesReady && currentStage === 3 && (
                   <button
                     type="button"
-                    onClick={() => {
-                      setCurrentStage(4);
-                      handleGenerateAllVideos();
-                    }}
+                    onClick={() => setShowQualityModal(true)}
                     className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-[#34A853] hover:bg-emerald-600 active:scale-98 text-white text-sm font-bold shadow-xl shadow-emerald-500/25 transition-all hover:scale-105"
                   >
                     <CheckCircle2 className="w-5 h-5" />
@@ -1007,10 +1006,7 @@ export const App: React.FC = () => {
                     <div className="pt-4 pb-2 flex justify-center animate-fadeIn">
                       <button
                         type="button"
-                        onClick={() => {
-                          setCurrentStage(4);
-                          handleGenerateAllVideos();
-                        }}
+                        onClick={() => setShowQualityModal(true)}
                         className="w-full max-w-xl flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-[#34A853] hover:bg-emerald-600 active:scale-98 text-white text-base font-bold shadow-2xl shadow-emerald-500/30 transition-all hover:scale-[1.02]"
                       >
                         <CheckCircle2 className="w-5 h-5" />
@@ -1184,28 +1180,52 @@ export const App: React.FC = () => {
 
         {/* STAGE 5: Export Master Final Assembly Banner */}
         {currentStage >= 4 && (
-          <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 text-white border border-slate-800 shadow-2xl flex items-center justify-between animate-fadeIn">
+          <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 text-white border border-slate-800 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn">
             <div className="space-y-1">
-              <h3 className="text-base font-extrabold flex items-center gap-2">
-                <Film className="w-5 h-5 text-[#4285F4]" />
-                <span>Stage 5: Assemble Final 30-Second Master Video</span>
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-extrabold flex items-center gap-2">
+                  <Film className="w-5 h-5 text-[#4285F4]" />
+                  <span>Stage 5: Assemble Final 30-Second Master Video</span>
+                </h3>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                  selectedVideoQuality === 'FULL_4K'
+                    ? 'bg-amber-950/80 text-amber-300 border-amber-800'
+                    : 'bg-blue-950/80 text-blue-300 border-blue-800'
+                }`}>
+                  {selectedVideoQuality === 'FULL_4K' ? '🌟 4K UHD Master Clips' : '⚡ 720p Fast Preview Clips'}
+                </span>
+              </div>
               <p className="text-xs text-slate-300">
                 Executes native ffmpeg concatenation with per-clip speed-up/trim transforms and audio sync.
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setShowExportModal(true);
-                handleExportMaster();
-              }}
-              className="flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-[#4285F4] hover:bg-blue-600 text-white font-bold text-sm shadow-xl shadow-blue-500/25 transition-all hover:scale-105 active:scale-95"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export Master 30s Video</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              {selectedVideoQuality === 'FAST_720P' && (
+                <button
+                  type="button"
+                  onClick={() => handleGenerateAllVideos('FULL_4K')}
+                  disabled={isBatchGeneratingVideos}
+                  className="flex items-center gap-1.5 px-5 py-3 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+                  title="Re-render all 10 clips in flagship 4K UHD before final master export"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>🌟 Upgrade All to 4K Master</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExportModal(true);
+                  handleExportMaster();
+                }}
+                className="flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-[#4285F4] hover:bg-blue-600 text-white font-bold text-sm shadow-xl shadow-blue-500/25 transition-all hover:scale-105 active:scale-95"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export Master 30s Video</span>
+              </button>
+            </div>
           </div>
         )}
       </main>
@@ -1219,6 +1239,19 @@ export const App: React.FC = () => {
           onRefine={handleRefineShot}
         />
       )}
+
+      {/* Video Quality Selection Modal */}
+      <VideoQualityModal
+        isOpen={showQualityModal}
+        onClose={() => setShowQualityModal(false)}
+        selectedQuality={selectedVideoQuality}
+        onConfirm={(quality) => {
+          setSelectedVideoQuality(quality);
+          setShowQualityModal(false);
+          setCurrentStage(4);
+          handleGenerateAllVideos(quality);
+        }}
+      />
 
       {/* Video Preview Modal */}
       {previewVideoUri && (
