@@ -155,13 +155,13 @@ export const Header: React.FC<HeaderProps> = ({
               Magic Countdown Generator
             </h1>
             <a
-              href="/specifications/spec_v8.html"
+              href="/specifications/spec_v9.html"
               target="_blank"
               rel="noopener noreferrer"
               className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-50 dark:bg-blue-950 text-[#4285F4] hover:text-blue-700 dark:hover:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/60 flex items-center gap-1 transition-all shadow-sm"
-              title="Open EGM Specification HTML"
+              title="Open EGM Specification HTML (v9.0)"
             >
-              <span>EGM v8.0 Spec</span>
+              <span>EGM v9.0 Spec</span>
               <ExternalLink className="w-3 h-3" />
             </a>
           </div>

@@ -14,6 +14,7 @@ export interface DiegeticScenePlan {
 /**
  * Builds the starting image prompt designed specifically for planning a subsequent video reveal.
  * The number is NOT prominent in the starting frame (hidden in shadows, behind occluders, or distant bokeh).
+ * Enforces zero-hallucination framing (wide distant or macro close-up, no brand logos/wordmarks).
  */
 export function buildRevealImagePrompt(
   number: number,
@@ -23,14 +24,14 @@ export function buildRevealImagePrompt(
   themeContext: string,
   customStyleAnchor: string = UNIVERSAL_STYLE_ANCHOR
 ): string {
-  const brandContext = brandName ? `for ${brandName}` : '';
-  const theme = themeContext ? `in a setting of ${themeContext}` : '';
+  const brandContext = brandName ? `inspired by the world of ${brandName}` : '';
+  const theme = themeContext ? `in an authentic setting of ${themeContext}` : '';
 
   return [
-    `A cinematic wide/medium shot establishing ${concept} ${brandContext} ${theme}.`,
-    `Atmospheric foreground machinery, natural bokeh, and dramatic shadows conceal the deep inner casing.`,
-    `The scene is specifically framed to conceal number '${number}', which is discreetly stamped or laser-engraved onto ${objectEmbedding} deep within the background shadows, ready to be revealed through camera motion.`,
-    `No prominent, floating, or obvious graphic numbers in view. Authentic diegetic textures, realistic metal reflections, volumetric dust particles.`,
+    `A cinematic wide establishing or macro close-up shot of ${concept} ${brandContext} ${theme}.`,
+    `Atmospheric foreground framing, natural depth of field, and authentic environmental lighting.`,
+    `The scene is specifically framed to conceal number '${number}', which is discreetly and physically integrated onto ${objectEmbedding} in the background or shadows, ready to be revealed through camera motion.`,
+    `No prominent, floating, or obvious graphic numbers in view. No readable brand text, logos, or typography overlays on objects. Authentic physical materials and natural textures only.`,
     customStyleAnchor,
   ]
     .filter(Boolean)
@@ -47,11 +48,11 @@ export function buildCoordinatedVideoPrompt(
   revealMechanism: string,
   brandName: string
 ): string {
-  const brandContext = brandName ? `for ${brandName}` : '';
+  const brandContext = brandName ? `in the world of ${brandName}` : '';
   return [
     `A 4-second cinematic camera move in ${concept} ${brandContext}.`,
-    `${revealMechanism}, smoothly bringing the physically authentic, laser-etched or illuminated diegetic number '${number}' on ${objectEmbedding} into sharp, crystal-clear focus.`,
-    `60fps ultra-smooth cinematic motion, photorealistic lighting shifts, shallow depth of field transition, highly detailed mechanical textures.`,
+    `${revealMechanism}, smoothly bringing the physically authentic, laser-etched, embossed, or illuminated diegetic number '${number}' on ${objectEmbedding} into sharp, crystal-clear focus.`,
+    `60fps ultra-smooth cinematic motion, photorealistic lighting shifts, shallow depth of field transition, natural environmental textures. No artificial digital overlays or brand text.`,
   ]
     .filter(Boolean)
     .join(' ');

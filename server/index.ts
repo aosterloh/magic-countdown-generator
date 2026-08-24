@@ -425,27 +425,35 @@ app.post('/api/generate-diegetic-prompts', requireCloudspaceDomain, async (req, 
     addLog('INFO', 'GEMINI_AI', `Generating Diegetic Prompts with reveal strategy for brand "${brandName}"...`);
 
     const promptText = `You are a world-class visual effects director, cinematographer, and generative video prompt director.
-Generate exactly 10 paired (Starting Image Prompt + Veo 3 Video Motion Prompt) concepts counting down sequentially from 10 down to 1 tailored for the customer brand "${brandName}" and theme "${themeContext}".
+Generate exactly 10 paired (Starting Image Prompt + Veo 3 Video Motion Prompt) concepts counting down sequentially from 10 down to 1 tailored specifically for the customer/business "${brandName}" and visual setting/ideas "${themeContext}".
 
-CRITICAL CINEMATIC NUMBER REVEAL DIRECTIVE:
-1. STARTING IMAGE COMPOSITION (imagePrompt):
-   - In most starting images (7 to 8 out of 10), the number MUST NOT be immediately visible. Establish rich mechanical textures, atmospheric depth, and foreground occluding structures (e.g. guide vanes, carbon fiber shrouds, pipes, atmospheric steam/shadows), specifically framing the scene to plan for revealing the number later through video camera motion.
-   - In 2 to 3 images only, the number may appear subtle in the distance, out-of-focus background bokeh, or partially obscured by shadows—never jumping in the spectator's eyes.
-   - NO floating or graphic numbers. Authentic physical diegetic materials only.
+DIRECTING DIRECTIVES:
+1. DOMAIN & ATMOSPHERIC AESTHETIC:
+   - Analyze "${brandName}" and "${themeContext}" to determine the exact industry and setting (e.g. Padel/Tennis camp vacation, Luxury Hospitality & Resort, Aviation & Aerospace, High-End Automotive/Racing, Fashion & Apparel, Gastronomy, Telecommunications, etc.).
+   - Adopt the natural visual tone, lighting, and color palette matching this domain (e.g. if padel/sports vacation: bright Mediterranean sunlight, turquoise glass courts, racket grip tape, ocean breeze; if aviation: wide golden hour tarmac, glass flight deck; if luxury hotel: warm amber ambient interior, marble, infinity pool).
+   - DO NOT default to dark industrial machinery or titanium parts unless specifically requested!
 
-2. COORDINATED VEO 3 VIDEO MOTION (videoPrompt & revealMechanism):
-   - Each slot MUST have a seamlessly coordinated 4-second video motion prompt that dynamically and organically reveals the physical diegetic number (e.g. camera continuous push-in past foreground obstructions, dollying into the compressor core to reveal the laser-engraved numeral, rack focus bringing distant serial marking into crisp focus, opening valve parting to uncover the stamped numeral).
+2. ZERO-HALLUCINATION BRAND SAFETY (CRITICAL):
+   - DO NOT show the company name, brand text, or corporate logos as text/liveries on any objects (to prevent AI text/logo distortion or typos that would upset corporate marketing).
+   - CAMERA FRAMING: Every scene must strictly use ONE of two framing strategies:
+     a) WIDE DISTANT ESTABLISHING SHOT: The main environment or vehicle/building is far away in atmospheric silhouette/distance, making any branding text naturally unreadable.
+     b) ULTRA CLOSE-UP / MACRO SHOT: Extreme close-up on physical textures, equipment, materials, or dials with shallow depth of field (blurred background), where no logo is present.
+
+3. DIEGETIC NUMBER EMBEDDING (10 down to 1):
+   - The number MUST be a physical, natural part of the world (e.g. court number, locker number, clock/dial marker, scoreboard digit, trophy rank, luggage tag, seat row, channel dial, jersey number, etched metal plate, painted ground line).
+   - In starting images (imagePrompt), conceal the number in the starting frame (in background bokeh, behind foreground players/rackets/foliage/doors, or in ambient shadows).
+   - In video prompts (videoPrompt), coordinate a 4.0s cinematic camera move (continuous push-in, dollying past foreground, rack focus, or sliding pan) that dynamically reveals the physical numeral.
 
 Return ONLY a valid JSON array of 10 objects:
 [
   {
     "index": 10,
     "diegeticNumber": 10,
-    "concept": "Aerospace titanium compressor intake chamber with foreground carbon fiber guide vanes",
-    "objectEmbedding": "laser-etched power rating numeral '10' on the inner titanium rotor casing",
-    "revealMechanism": "Camera pushes in past foreground carbon fiber vanes, dollying deep into the compressor hub to bring the laser-etched numeral '10' into sharp, luminous focus",
-    "imagePrompt": "Cinematic 35mm anamorphic wide shot establishing aerospace titanium compressor intake chamber...",
-    "videoPrompt": "4-second smooth 60fps cinematic camera move pushing past foreground carbon fiber vanes..."
+    "concept": "Specific descriptive scene title matching ${brandName} and ${themeContext}",
+    "objectEmbedding": "specific physical object in this world carrying numeral '10'",
+    "revealMechanism": "cinematic camera move that unveils the numeral '10'",
+    "imagePrompt": "Cinematic 35mm anamorphic shot framed as wide establishing or macro close-up...",
+    "videoPrompt": "4-second smooth 60fps cinematic camera move..."
   }
 ]`;
 
@@ -477,7 +485,7 @@ Return ONLY a valid JSON array of 10 objects:
                 videoPrompt: item.videoPrompt || buildCoordinatedVideoPrompt(item.diegeticNumber, item.concept, item.objectEmbedding, item.revealMechanism || 'Camera pushes into scene', brandName),
                 revealMechanism: item.revealMechanism || `Camera push-in reveals number '${item.diegeticNumber}'`,
               }));
-              addLog('SUCCESS', 'GEMINI_AI', `Successfully synthesized 10 reveal-coordinated diegetic prompts using ${m}`);
+              addLog('SUCCESS', 'GEMINI_AI', `Successfully synthesized 10 domain-aware diegetic prompts using ${m}`);
               return res.json({ success: true, prompts: enriched, auth: 'API_KEY', model: m });
             }
           }
@@ -487,69 +495,50 @@ Return ONLY a valid JSON array of 10 objects:
       }
     }
 
-    // Procedural Fallback Prompts with Coordinated Reveal Framing (Lufthansa Group Aviation Master Plan)
-    const concepts = [
-      {
-        num: 10,
-        concept: `Massive Lufthansa Technik maintenance hangar with widebody Boeing 787 and Airbus A350 for ${brandName}`,
-        embed: "laser-etched hangar bay gantry marker 'BAY 10' on the overhead steel truss",
-        reveal: "Camera dollies smoothly past foreground hydraulic maintenance lifts and scaffolding, tilting up to bring the illuminated 'BAY 10' gantry marker into sharp cinematic focus",
-      },
-      {
-        num: 9,
-        concept: `High-bypass turbofan jet engine maintenance bay in ${brandName} engineering facility`,
-        embed: "precision-stamped titanium rotor stage indicator 'COMPRESSOR 09'",
-        reveal: "Foreground engine cowling swings open on hydraulic hinges as the camera pushes into the spinning titanium turbine blades, uncovering the stamped 'COMPRESSOR 09' rating",
-      },
-      {
-        num: 8,
-        concept: `High-tech modern glass cockpit flight deck during pre-flight systems initialization for ${brandName}`,
-        embed: "digital flight director altitude waypoint display reading 'FL-080'",
-        reveal: "Camera executes a slow forward dolly between captain and first officer seats as ambient cockpit backlighting illuminates the high-contrast avionics screen reading 'FL-080'",
-      },
-      {
-        num: 7,
-        concept: `Lufthansa flight crew executing twilight tarmac walkaround inspection beside the aircraft nose`,
-        embed: "stenciled nose landing gear inspection hatch identifier 'GEAR-07'",
-        reveal: "Flight captain's inspection torchlight sweeps across the gleaming fuselage, illuminating the stenciled 'GEAR-07' marking in sharp relief against the dark tarmac",
-      },
-      {
-        num: 6,
-        concept: `Luxury first-class passenger cabin suite with warm ambient lighting for ${brandName}`,
-        embed: "brushed aluminum seat suite console badge 'SUITE 06'",
-        reveal: "Camera glides softly along the curved wood-grain privacy divider as ambient cabin lighting rises, revealing the engraved 'SUITE 06' luxury emblem",
-      },
-      {
-        num: 5,
-        concept: `Panoramic glass jet bridge with executive passengers boarding at golden sunset for ${brandName}`,
-        embed: "illuminated digital boarding gate terminal display 'GATE B05'",
-        reveal: "Camera tracks smoothly alongside boarding passengers as golden hour sunlight flares through the panoramic glass, bringing the glowing 'GATE B05' sign into crisp focus",
-      },
-      {
-        num: 4,
-        concept: `Aircraft pushback tug and ground crew marshalling on wet rain-soaked airport ramp for ${brandName}`,
-        embed: "retroreflective yellow taxiway ground intersection marker 'TWY 4'",
-        reveal: "Aircraft nosewheel turns smoothly as ground crew marshalling wands trace luminous arcs in the twilight, revealing the wet tarmac marker 'TWY 4'",
-      },
-      {
-        num: 3,
-        concept: `Wet tarmac runway threshold lineup with dramatic runway centerline lighting for ${brandName}`,
-        embed: "painted white runway heading threshold marking 'RWY 03'",
-        reveal: "Camera accelerates low over the wet runway surface as twin high-intensity landing lights reflect across puddles, bringing the bold painted 'RWY 03' into sharp clarity",
-      },
-      {
-        num: 2,
-        concept: `Cockpit engine throttle quadrant during full-thrust takeoff roll for ${brandName}`,
-        embed: "machined aluminum dual-thrust lever rating marking 'ENG 2 THRUST'",
-        reveal: "Pilot's hand advances the dual throttle levers forward into takeoff detent, uncovering the machined 'ENG 2 THRUST' engraved directly onto the throttle quadrant",
-      },
-      {
-        num: 1,
-        concept: `Lufthansa flagship aircraft climbing steeply into golden sunset clouds with iconic crane tail livery`,
-        embed: "high-contrast illuminated winglet navigation light housing 'POS 1'",
-        reveal: "Camera executes an exhilarating dynamic pan along the flexed composite wingtip into the setting sun, revealing the luminous navigation beacon 'POS 1' as the aircraft pierces the cloud layer",
-      },
-    ];
+    // Dynamic Multi-Domain Procedural Fallback Prompts
+    const isPadelOrSports = /padel|tennis|sport|camp|vacation|game|match|player/i.test(`${brandName} ${themeContext}`);
+    const isAviation = /aviation|airline|flight|plane|hangar|tarmac|airport/i.test(`${brandName} ${themeContext}`);
+
+    let concepts: { num: number; concept: string; embed: string; reveal: string }[] = [];
+
+    if (isPadelOrSports) {
+      concepts = [
+        { num: 10, concept: `Sunny Mediterranean outdoor padel resort center court surrounded by palm trees and glass walls`, embed: "painted blue court surface baseline identifier 'COURT 10'", reveal: "Camera dollies forward over the crisp blue turf and net cord, tilting down to reveal the painted 'COURT 10' baseline marking" },
+        { num: 9, concept: `Championship electronic LED scoreboard overlooking the sunlit padel stadium`, embed: "amber LED match score readout displaying 'SET 09'", reveal: "Camera pans smoothly past foreground spectator stands as ambient sunlight reflects off the glass wall, uncovering the glowing 'SET 09' digit" },
+        { num: 8, concept: `Training session ball hopper basket filled with vibrant neon green padel balls beside the court bench`, embed: "embossed chrome ball basket capacity gauge reading 'CAP 80'", reveal: "Player lifts a premium carbon fiber racket into view, uncovering the embossed 'CAP 80' marking on the metal hopper" },
+        { num: 7, concept: `Luxury Mediterranean resort players' private villa patio overlooking the ocean`, embed: "cast bronze villa suite entrance door plaque 'SUITE 07'", reveal: "Camera glides softly along lush bougainvillea vines as warm morning sunlight illuminates the cast bronze 'SUITE 07' plate" },
+        { num: 6, concept: `Pro shop racket stringing workstation with precision tensioning calibrator`, embed: "digital string tension dial reading '26.0 KG / 6'", reveal: "Camera pushes in macro close-up on the woven carbon fiber frame as the calibration arm swings, revealing the tension dial '6'" },
+        { num: 5, concept: `Courtside coach's tactical whiteboard and timing stopwatch resting on the player bench`, embed: "mechanical analog chrome stopwatch dial showing '05 MIN'", reveal: "Camera moves low over the water bottles and towel, bringing the ticking chrome stopwatch needle pointing at '05' into sharp focus" },
+        { num: 4, concept: `Modern luxury athletic locker room with teak wood benches and ambient backlighting`, embed: "recessed brushed brass locker badge 'LOCKER 04'", reveal: "Locker room door glides open smoothly as soft interior lighting rises, revealing the engraved 'LOCKER 04' badge" },
+        { num: 3, concept: `Tournament awards podium at twilight with ocean sunset backdrop`, embed: "bronze third-place podium pedestal step numeral '3'", reveal: "Camera cranes down from the golden twilight sky toward the illuminated podium step, highlighting the carved numeral '3'" },
+        { num: 2, concept: `Silver championship finalists' trophy plate resting on velvet presentation table`, embed: "hand-engraved silver medallion inscription 'FINALIST #2'", reveal: "Camera tracks across the silver plate surface as evening event lighting sparkles, revealing the engraved 'FINALIST #2'" },
+        { num: 1, concept: `Gleaming gold championship trophy cup catching the brilliant morning sun rays`, embed: "gold winner's cup crest engraved 'CHAMPION 1'", reveal: "Dynamic ascending camera sweep circles the polished gold cup into the sunlight, highlighting the sparkling 'CHAMPION 1' crest" },
+      ];
+    } else if (isAviation) {
+      concepts = [
+        { num: 10, concept: `Maintenance hangar with widebody aircraft silhouette in soft misty morning light`, embed: "overhead steel gantry truss marker 'BAY 10'", reveal: "Camera dollies smoothly past foreground scaffolding, tilting up to bring the illuminated 'BAY 10' gantry marker into sharp cinematic focus" },
+        { num: 9, concept: `Turbofan jet engine maintenance bay in engineering facility`, embed: "precision-stamped titanium rotor stage indicator 'COMPRESSOR 09'", reveal: "Camera pushes into the curved titanium turbine blades, uncovering the stamped 'COMPRESSOR 09' rating with shallow depth of field" },
+        { num: 8, concept: `Modern glass cockpit flight deck during pre-flight systems initialization`, embed: "digital flight director altitude waypoint display reading 'FL-080'", reveal: "Camera executes a slow forward dolly between seats as ambient cockpit backlighting illuminates the screen reading 'FL-080'" },
+        { num: 7, concept: `Twilight tarmac walkaround inspection beside the nose gear`, embed: "stenciled nose landing gear hatch identifier 'GEAR-07'", reveal: "Inspection light sweeps across the landing gear structure, illuminating the stenciled 'GEAR-07' marking in sharp relief" },
+        { num: 6, concept: `Luxury first-class passenger cabin suite with warm ambient lighting`, embed: "brushed aluminum seat suite console badge 'SUITE 06'", reveal: "Camera glides softly along the curved privacy divider as ambient lighting rises, revealing the engraved 'SUITE 06' luxury emblem" },
+        { num: 5, concept: `Panoramic glass jet bridge at golden sunset`, embed: "illuminated digital boarding gate terminal display 'GATE B05'", reveal: "Camera tracks smoothly along the glass corridor as golden hour sunlight brings the glowing 'GATE B05' sign into crisp focus" },
+        { num: 4, concept: `Aircraft pushback tug and ground crew marshalling on wet airport ramp`, embed: "retroreflective yellow taxiway ground intersection marker 'TWY 4'", reveal: "Camera lowers over the rain-slicked tarmac as marshalling lights trace arcs, revealing the wet tarmac marker 'TWY 4'" },
+        { num: 3, concept: `Wet tarmac runway threshold lineup with dramatic centerline lighting`, embed: "painted white runway heading threshold marking 'RWY 03'", reveal: "Camera accelerates low over the wet runway surface, bringing the bold painted 'RWY 03' into sharp clarity" },
+        { num: 2, concept: `Cockpit engine throttle quadrant during full-thrust takeoff roll`, embed: "machined aluminum dual-thrust lever rating marking 'ENG 2 THRUST'", reveal: "Dual throttle levers advance forward into takeoff detent, uncovering the machined 'ENG 2 THRUST' engraved on the quadrant" },
+        { num: 1, concept: `Aircraft climbing steeply into golden sunset clouds viewed from a distant chase angle`, embed: "high-contrast illuminated winglet navigation light housing 'POS 1'", reveal: "Camera dynamic pan along the composite wingtip into the setting sun reveals the luminous navigation beacon 'POS 1'" },
+      ];
+    } else {
+      // Universal Premium Brand Setting
+      concepts = Array.from({ length: 10 }, (_, i) => {
+        const num = 10 - i;
+        return {
+          num,
+          concept: `Cinematic atmospheric scene ${num} in ${themeContext || brandName}`,
+          embed: `engraved physical surface marker 'STEP 0${num}'`,
+          reveal: `Camera executes a smooth cinematic push-in through natural foreground depth, revealing the physical numeral '${num}' in crisp focus`,
+        };
+      });
+    }
 
     const proceduralPrompts = concepts.map((c) => ({
       index: c.num,
@@ -561,7 +550,7 @@ Return ONLY a valid JSON array of 10 objects:
       videoPrompt: buildCoordinatedVideoPrompt(c.num, c.concept, c.embed, c.reveal, brandName),
     }));
 
-    addLog('INFO', 'GEMINI_AI', 'Generated 10 procedural reveal-coordinated prompts');
+    addLog('INFO', 'GEMINI_AI', 'Generated 10 domain-aware procedural reveal prompts');
     return res.json({ success: true, prompts: proceduralPrompts, auth: 'PROCEDURAL' });
   } catch (err: any) {
     addLog('ERROR', 'GEMINI_AI', 'Error generating prompts: ' + err.message);
@@ -578,105 +567,74 @@ app.post('/api/recreate-prompt', requireCloudspaceDomain, async (req, res) => {
     addLog('INFO', 'GEMINI_AI', `Re-creating coordinated reveal prompt for Shot #${diegeticNumber} (${brandName})...`);
 
     const promptText = `You are a world-class visual effects director, cinematographer, and generative video prompt director.
-Generate ONE distinct, creative, photorealistic, cinematic paired (Starting Image Prompt + Veo 3 Video Motion Prompt) concept representing the physical countdown number "${diegeticNumber}" tailored for "${brandName}" and "${themeContext}".
+Generate a single paired (Starting Image Prompt + Veo 3 Video Motion Prompt) concept specifically for countdown Shot #${diegeticNumber} tailored for the business "${brandName}" and setting/theme "${themeContext}".
 
-CRITICAL CINEMATIC REVEAL RULES:
-1. STARTING IMAGE (imagePrompt): The starting image MUST NOT have number "${diegeticNumber}" jumping in the spectator's eyes. It establishes machinery, depth, and foreground occlusion (vanes, shrouds, steam, shadow) planning for the reveal.
-2. VEO 3 VIDEO (videoPrompt & revealMechanism): A 4-second continuous camera motion (push-in, pan, rack focus, or machinery articulation) that dynamically reveals the physically embedded number "${diegeticNumber}".
+DIRECTING DIRECTIVES:
+1. DOMAIN & LIGHTING: Match the natural atmosphere of "${themeContext}" (e.g. bright Mediterranean sunlit court for sports/padel, golden hour for aviation, luxury ambient warmth for hospitality). DO NOT default to dark machinery!
+2. ZERO-HALLUCINATION BRAND SAFETY: Do NOT render corporate logos, wordmarks, or company text on objects. Use either a WIDE DISTANT ESTABLISHING SHOT (where text is absent) or an ULTRA CLOSE-UP MACRO SHOT (shallow depth of field).
+3. DIEGETIC NUMBER: Embed numeral '${diegeticNumber}' physically onto a natural world object.
 
-Return ONLY valid JSON in this exact format:
+Return ONLY a single valid JSON object:
 {
+  "index": ${diegeticNumber},
   "diegeticNumber": ${diegeticNumber},
-  "concept": "A creative description of the physical scene and machinery",
-  "objectEmbedding": "specific physical embedding description of number '${diegeticNumber}'",
-  "revealMechanism": "specific camera/machinery movement that reveals number '${diegeticNumber}' during the video",
-  "imagePrompt": "Cinematic wide/medium shot establishing...",
-  "videoPrompt": "4-second smooth 60fps cinematic camera move..."
+  "concept": "...",
+  "objectEmbedding": "...",
+  "revealMechanism": "...",
+  "imagePrompt": "...",
+  "videoPrompt": "..."
 }`;
 
     if (key) {
-      try {
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: promptText }] }],
-              generationConfig: { temperature: 0.9 },
-            }),
-          }
-        );
+      const candidateModels = ['gemini-2.5-flash', 'gemini-3-flash-preview', 'gemini-flash-latest'];
+      for (const m of candidateModels) {
+        try {
+          const geminiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: promptText }] }],
+              }),
+            }
+          );
 
-        if (geminiRes.ok) {
-          const data = await geminiRes.json();
-          const rawResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (rawResponse) {
-            const cleaned = rawResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-            const parsed = JSON.parse(cleaned);
-            const imagePrompt = parsed.imagePrompt || buildRevealImagePrompt(
-              diegeticNumber,
-              parsed.concept,
-              parsed.objectEmbedding,
-              brandName,
-              themeContext,
-              UNIVERSAL_STYLE_ANCHOR
-            );
-            const videoPrompt = parsed.videoPrompt || buildCoordinatedVideoPrompt(
-              diegeticNumber,
-              parsed.concept,
-              parsed.objectEmbedding,
-              parsed.revealMechanism || 'Camera pushes in to reveal number',
-              brandName
-            );
-            addLog('SUCCESS', 'GEMINI_AI', `Re-created reveal-coordinated prompt for Shot #${diegeticNumber}`);
-            return res.json({
-              success: true,
-              diegeticNumber,
-              concept: parsed.concept,
-              objectEmbedding: parsed.objectEmbedding,
-              revealMechanism: parsed.revealMechanism,
-              imagePrompt,
-              videoPrompt,
-            });
+          if (geminiRes.ok) {
+            const data = await geminiRes.json();
+            const rawResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (rawResponse) {
+              const cleaned = rawResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+              const item = JSON.parse(cleaned);
+              const enriched = {
+                ...item,
+                imagePrompt: item.imagePrompt || buildRevealImagePrompt(item.diegeticNumber, item.concept, item.objectEmbedding, brandName, themeContext, UNIVERSAL_STYLE_ANCHOR),
+                videoPrompt: item.videoPrompt || buildCoordinatedVideoPrompt(item.diegeticNumber, item.concept, item.objectEmbedding, item.revealMechanism || 'Camera pushes into scene', brandName),
+                revealMechanism: item.revealMechanism || `Camera push-in reveals number '${item.diegeticNumber}'`,
+              };
+              addLog('SUCCESS', 'GEMINI_AI', `Successfully re-created Shot #${diegeticNumber} prompt using ${m}`);
+              return res.json({ success: true, prompt: enriched, model: m });
+            }
           }
+        } catch (apiErr) {
+          console.warn(`Model ${m} recreate-prompt call failed:`, apiErr);
         }
-      } catch (err: any) {
-        addLog('WARN', 'GEMINI_AI', `Re-create prompt API call failed: ${err.message}`);
       }
     }
 
-    // Procedural fallback
-    const fallbackConcept = `Custom telemetry chamber with foreground carbon louvers for ${brandName}`;
-    const fallbackEmbed = `illuminated titanium indicator badge '${diegeticNumber}'`;
-    const fallbackReveal = `Camera pushes smoothly past the foreground louvers to bring the illuminated '${diegeticNumber}' into crisp focus`;
-    const fallbackImagePrompt = buildRevealImagePrompt(
+    const fallbackConcept = {
+      index: diegeticNumber,
       diegeticNumber,
-      fallbackConcept,
-      fallbackEmbed,
-      brandName,
-      themeContext,
-      UNIVERSAL_STYLE_ANCHOR
-    );
-    const fallbackVideoPrompt = buildCoordinatedVideoPrompt(
-      diegeticNumber,
-      fallbackConcept,
-      fallbackEmbed,
-      fallbackReveal,
-      brandName
-    );
+      concept: `Atmospheric setting for Shot #${diegeticNumber} in ${themeContext || brandName}`,
+      objectEmbedding: `physically engraved numeral '${diegeticNumber}'`,
+      revealMechanism: `Camera push-in brings the physical numeral '${diegeticNumber}' into crisp focus`,
+      imagePrompt: buildRevealImagePrompt(diegeticNumber, `Atmospheric shot for ${brandName}`, `surface numeral '${diegeticNumber}'`, brandName, themeContext, UNIVERSAL_STYLE_ANCHOR),
+      videoPrompt: buildCoordinatedVideoPrompt(diegeticNumber, `Atmospheric shot for ${brandName}`, `surface numeral '${diegeticNumber}'`, 'Camera moves smoothly past foreground', brandName),
+    };
 
-    return res.json({
-      success: true,
-      diegeticNumber,
-      concept: fallbackConcept,
-      objectEmbedding: fallbackEmbed,
-      revealMechanism: fallbackReveal,
-      imagePrompt: fallbackImagePrompt,
-      videoPrompt: fallbackVideoPrompt,
-    });
+    return res.json({ success: true, prompt: fallbackConcept, model: 'procedural-fallback' });
   } catch (err: any) {
-    addLog('ERROR', 'GEMINI_AI', 'Error in recreate-prompt: ' + err.message);
+    addLog('ERROR', 'GEMINI_AI', 'Error recreating prompt: ' + err.message);
     res.status(500).json({ error: err.message });
   }
 });

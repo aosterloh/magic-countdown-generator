@@ -34,7 +34,7 @@ describe('Prompt Builder & Coordinated Reveal Architecture', () => {
 
     expect(videoPrompt).toContain('Porsche');
     expect(videoPrompt).toContain('Camera pushes past foreground carbon fiber guide vanes');
-    expect(videoPrompt).toContain("laser-etched or illuminated diegetic number '10'");
+    expect(videoPrompt).toContain("diegetic number '10'");
     expect(videoPrompt).toContain('60fps ultra-smooth cinematic motion');
   });
 

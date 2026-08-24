@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magic Countdown Generator - EGM Phase E11 Specification (v9.0)</title>
+  <style>
+    :root {
+      --primary: #4285F4;
+      --secondary: #EA4335;
+      --accent: #FBBC04;
+      --success: #34A853;
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --code-bg: #0b0f19;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 24px 100px 24px;
+    }
+
+    header {
+      border-bottom: 1px solid var(--surface-border);
+      padding-bottom: 24px;
+      margin-bottom: 40px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      margin-right: 8px;
+    }
+
+    .badge-blue { background: rgba(66, 133, 244, 0.15); color: #60a5fa; border: 1px solid rgba(66, 133, 244, 0.3); }
+    .badge-emerald { background: rgba(52, 168, 83, 0.15); color: #4ade80; border: 1px solid rgba(52, 168, 83, 0.3); }
+    .badge-purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-amber { background: rgba(251, 188, 4, 0.15); color: #fde047; border: 1px solid rgba(251, 188, 4, 0.3); }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      margin: 16px 0 8px 0;
+      letter-spacing: -0.02em;
+    }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 40px 0 16px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--surface-border);
+      color: #e2e8f0;
+    }
+
+    h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 24px 0 8px 0;
+      color: #93c5fd;
+    }
+
+    p, li {
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+
+    ul, ol {
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 16px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      color: #e2e8f0;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 6px;
+      color: #93c5fd;
+    }
+
+    .alert {
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+
+    .alert-info {
+      background: rgba(66, 133, 244, 0.1);
+      border: 1px solid rgba(66, 133, 244, 0.3);
+      color: #93c5fd;
+    }
+
+    .alert-success {
+      background: rgba(52, 168, 83, 0.1);
+      border: 1px solid rgba(52, 168, 83, 0.3);
+      color: #86efac;
+    }
+
+    .alert-warning {
+      background: rgba(251, 188, 4, 0.1);
+      border: 1px solid rgba(251, 188, 4, 0.3);
+      color: #fde047;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin: 16px 0;
+    }
+
+    th, td {
+      border: 1px solid var(--surface-border);
+      padding: 10px 14px;
+      text-align: left;
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.04);
+      color: #f1f5f9;
+      font-weight: 600;
+    }
+
+    .footer {
+      margin-top: 60px;
+      padding-top: 24px;
+      border-top: 1px solid var(--surface-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <span class="badge badge-blue">EGM Phase E11</span>
+        <span class="badge badge-emerald">Production Specification</span>
+        <span class="badge badge-purple">Version 9.0</span>
+      </div>
+      <h1>Magic Countdown Generator</h1>
+      <p style="margin-top: 4px; font-size: 15px;">
+        Universal Domain-Aware Directing, Zero-Hallucination Brand Safety Framing, and Multi-User Cloud Storage Persistence.
+      </p>
+    </header>
+
+    <!-- SECTION 1: EXECUTIVE SUMMARY -->
+    <section>
+      <h2>1. Executive Summary & Core Purpose</h2>
+      <p>
+        <strong>Magic Countdown Generator</strong> is an autonomous AI directing suite that creates broadcast-ready 30-second cinematic brand countdown videos (10 down to 1). The system leverages Google's flagship generative multimodal models (Gemini 2.5 Flash, Gemini Flash Image / Nano Banana, and Google Veo 3.1) alongside Google Cloud Storage (GCS) and FFmpeg to generate diegetically grounded, photorealistic video assets.
+      </p>
+      <div class="alert alert-success">
+        <strong>✨ EGM v9.0 Core Advancements:</strong>
+        <ul style="margin: 8px 0 0 0;">
+          <li><strong>Universal Domain Adaptation:</strong> Intelligent prompt engine infers customer industry (e.g. Sports & Padel camp vacations, Luxury Hospitality, Aviation, Automotive racing, Gastronomy) and dynamically matches the lighting, palette, and environment described in user visual ideas.</li>
+          <li><strong>Zero-Hallucination Brand Safety Framing:</strong> Explicitly forbids rendering corporate logos, wordmarks, or text on physical objects, using Wide Distant establishing shots or Macro Close-ups to eliminate AI logo hallucinations.</li>
+          <li><strong>Multi-User Projects Popup Modal:</strong> Search, view, open, and permanently delete past countdown projects saved in Google Cloud Storage.</li>
+          <li><strong>Lossless Audio Muting:</strong> Stream-copy audio stripping (<code>-an -c:v copy</code>) on all Veo 3.1 clips for pristine Stage 5 soundtrack synchronization.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- SECTION 2: ZERO-HALLUCINATION BRAND SAFETY FRAMING -->
+    <section>
+      <h2>2. Zero-Hallucination Brand Safety & Camera Framing Architecture</h2>
+      <p>
+        Generative image and video models often hallucinate distorted typography, misspelled company names, and inaccurate logos when attempting to paint brand wordmarks on objects. EGM v9.0 enforces a strict dual-framing director's rule across all 10 scenes:
+      </p>
+      <div class="grid-2">
+        <div class="card">
+          <span class="badge badge-blue">Framing Strategy A</span>
+          <h3 style="margin-top: 8px;">Wide Distant Establishing Shot</h3>
+          <p>
+            The branded vehicle, facility, or environment is positioned at a wide, atmospheric distance (e.g. aircraft on misty runway, stadium arena from distant blimp angle, luxury resort from coastline). At this scale, fine typography and logos are naturally unreadable, preserving visual authenticity with zero AI text artifacts.
+          </p>
+        </div>
+        <div class="card">
+          <span class="badge badge-purple">Framing Strategy B</span>
+          <h3 style="margin-top: 8px;">Ultra Close-Up / Macro Shot</h3>
+          <p>
+            The camera focuses with extreme proximity and shallow depth-of-field (bokeh) on physical materials, equipment textures, dials, and mechanical components (e.g. racket grip tape, cockpit dial, leather stitching, tennis ball felt, titanium rotor). No corporate logos appear in the tight frame.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: 5-STAGE PIPELINE SPECIFICATION -->
+    <section>
+      <h2>3. The 5-Stage Directing & Synthesis Pipeline</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Stage</th>
+            <th>Name</th>
+            <th>Underlying Engine</th>
+            <th>Key Deliverables & Behavior</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>1</strong></td>
+            <td>Brand & Style Direction</td>
+            <td>Client UI & Domain Analyzer</td>
+            <td>Captures Customer/Brand Name, Setting/Visual Ideas, and Style Modifiers. Infers domain mood.</td>
+          </tr>
+          <tr>
+            <td><strong>2</strong></td>
+            <td>Diegetic Prompt Synthesis</td>
+            <td>Gemini 2.5 Flash (API Key / ADC)</td>
+            <td>Generates 10 coordinated pairs (16:9 Image Prompt + 4.0s Veo Motion Prompt) embedding numerals 10 down to 1.</td>
+          </tr>
+          <tr>
+            <td><strong>3</strong></td>
+            <td>Diegetic Starting Frames</td>
+            <td>Gemini 2.5 Flash Image / Nano Banana</td>
+            <td>Generates 10 starting frames via 2 parallel workers. Includes dual-image reference refinement and rollback.</td>
+          </tr>
+          <tr>
+            <td><strong>4</strong></td>
+            <td>Veo 3.1 Video Synthesis</td>
+            <td>Google Veo 3.1 (Fast 720p / Full 4K)</td>
+            <td>Synthesizes 4.0s @ 60fps cinematic camera motion revealing the numeral. Audio instantly stripped (<code>-an</code>).</td>
+          </tr>
+          <tr>
+            <td><strong>5</strong></td>
+            <td>Master Concat & Audio Sync</td>
+            <td>FFmpeg Concat & EBU R128 Normalizer</td>
+            <td>Sequences all 10 clips with 1.0s crossfades against a 30.0s stereo soundtrack into <code>master_countdown.mp4</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- SECTION 4: MULTI-USER STORAGE & PROJECT MANAGEMENT -->
+    <section>
+      <h2>4. Google Cloud Storage Persistent Architecture</h2>
+      <p>
+        Projects are stored persistently in Google Cloud Storage (<code>gs://magic-countdown-generator-aosterloh-cs-muc</code>) under a clean customer-centric directory structure:
+      </p>
+      <pre><code>gs://magic-countdown-generator-aosterloh-cs-muc/
+└── jobs/
+    ├── Adidas-8PF4P/
+    │   ├── state.json                 &lt;-- Full metadata, prompt cards, stage progress
+    │   ├── images/shot_10_v1.png      &lt;-- 16:9 Starting frame PNGs
+    │   ├── videos/slot_10_veo.mp4     &lt;-- Muted Veo 3.1 720p/4K MP4 clips
+    │   └── master/master_30s.mp4      &lt;-- Exported 30.0s master broadcast video
+    └── Weebora_Padel-3K9LP/
+        └── state.json</code></pre>
+      <ul>
+        <li><strong>Customer-Centric Naming:</strong> Projects are named strictly by Customer/Brand Name (e.g. <code>Adidas</code>, <code>Weebora</code>, <code>Lufthansa Group</code>). Updating the brand field syncs the project title in real time.</li>
+        <li><strong>Projects Popup Modal (<code>[ 📁 Projects ]</code>):</strong> Header button opens an interactive modal displaying all saved projects with stage badges (<code>🌟 Master Ready</code>, <code>🎬 Veo Videos (X/10)</code>), timestamps, one-click <strong>Open Project</strong>, and permanent <strong>Delete Project</strong> with confirmation.</li>
+        <li><strong>Continuous Live Auto-Save:</strong> Project modifications debounce and sync to GCS with live <code>[ ☁️ Saved ]</code> status confirmation.</li>
+        <li><strong>Clean Startup:</strong> Launching the app initializes a clean project in Stage 1 without forcing past session restoration.</li>
+      </ul>
+    </section>
+
+    <!-- SECTION 5: UI & TOOLBAR ARCHITECTURE -->
+    <section>
+      <h2>5. User Interface & Header/Footer Features</h2>
+      <div class="card">
+        <h3>Top Navigation Bar</h3>
+        <ul>
+          <li><strong><code>[ 📁 {Customer Name} ({Count}) ]</code>:</strong> Opens the Projects Management modal.</li>
+          <li><strong><code>[ ☁️ Saved ]</code>:</strong> Real-time auto-save indicator (Saved / Saving... / Error).</li>
+          <li><strong><code>[ ➕ New Project ]</code>:</strong> Starts a new countdown project from scratch.</li>
+          <li><strong><code>[ ❓ Help ]</code>:</strong> Opens interactive 5-stage pipeline explainer modal.</li>
+          <li><strong><code>[ ☀️ / 🌙 ]</code>:</strong> Light and Dark mode theme toggle.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Lower-Right GitHub Link</h3>
+        <p>
+          A subtle, floating GitHub button (<code>[ 🐙 GitHub ]</code>) is positioned in the lower-right corner of the application for fast repository access:
+          <br>
+          <a href="https://github.com/aosterloh/magic-countdown-generator" target="_blank" style="color: #60a5fa;">https://github.com/aosterloh/magic-countdown-generator</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- SECTION 6: API SCHEMAS & ENDPOINTS -->
+    <section>
+      <h2>6. REST API Endpoint Specifications</h2>
+      <pre><code>POST /api/generate-prompts
+Body: { "brandName": "Weebora", "themeContext": "Padel camp vacation in Spain, sunlit courts, players, ocean breeze" }
+Response: { "success": true, "prompts": [ { "diegeticNumber": 10, "concept": "...", "imagePrompt": "...", "videoPrompt": "..." } ] }
+
+GET /api/jobs
+Response: { "success": true, "jobs": [ { "jobId": "...", "customerName": "Weebora", "currentStage": 1, ... } ] }
+
+DELETE /api/jobs/:jobId
+Response: { "success": true, "message": "Job deleted successfully" }
+
+POST /api/generate-video
+Body: { "slotIndex": 10, "imageUri": "/output/slot_10.png", "videoPrompt": "...", "qualityMode": "FAST_720P" }
+Response: { "success": true, "rawVideoUri": "/output/slot_10_veo_fast_720p.mp4", "qualityMode": "FAST_720P" }</code></pre>
+    </section>
+
+    <div class="footer">
+      <div>Magic Countdown Generator — EGM Phase E11 Specification v9.0</div>
+      <div>Google Cloud Run & Cloud Storage • europe-west3</div>
+    </div>
+  </div>
+</body>
+</html>
