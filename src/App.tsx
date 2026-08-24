@@ -284,6 +284,22 @@ export const App: React.FC = () => {
 
         if (res.ok) {
           setSaveStatus('saved');
+          setJobsList((prev) =>
+            prev.map((j) =>
+              j.jobId === currentJobId
+                ? {
+                    ...j,
+                    customerName: brandName,
+                    creativeTheme: themeContext,
+                    currentStage,
+                    readyImagesCount: slots.filter((s) => Boolean(s.currentImageUri)).length,
+                    readyVideosCount: slots.filter((s) => Boolean(s.rawVideoUri)).length,
+                    hasMasterVideo: Boolean(masterVideoUri),
+                    updatedAt: new Date().toISOString(),
+                  }
+                : j
+            )
+          );
         } else {
           setSaveStatus('error');
         }
@@ -310,7 +326,27 @@ export const App: React.FC = () => {
   };
 
   const handleCreateNewJob = () => {
-    createAndSelectNewJob('Lufthansa Group', 'Aviation Countdown');
+    createAndSelectNewJob(brandName || 'Lufthansa Group', 'Countdown');
+  };
+
+  const handleDeleteJob = async (jobIdToDelete: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/jobs/${jobIdToDelete}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        const remaining = await fetchJobsList();
+        if (jobIdToDelete === currentJobId) {
+          if (remaining && remaining.length > 0) {
+            await loadJob(remaining[0].jobId);
+          } else {
+            await createAndSelectNewJob('Lufthansa Group', 'Aviation Countdown');
+          }
+        }
+      }
+    } catch (err) {
+      console.error(`Failed to delete job ${jobIdToDelete}:`, err);
+    }
   };
 
   // Sync theme with document element
@@ -787,6 +823,8 @@ export const App: React.FC = () => {
         saveStatus={saveStatus}
         onSelectJob={handleSelectJob}
         onCreateNewJob={handleCreateNewJob}
+        onDeleteJob={handleDeleteJob}
+        onRefreshJobs={fetchJobsList}
       />
 
       {/* Main Content Area */}

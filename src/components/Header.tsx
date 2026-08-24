@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Key, Activity, Sun, Moon, Sparkles, ChevronDown, ExternalLink, CheckCircle2, X, Terminal, RefreshCw, Image as ImageIcon, ShieldCheck } from 'lucide-react';
+import { Key, Activity, Sun, Moon, Sparkles, ExternalLink, CheckCircle2, X, Terminal, RefreshCw, Image as ImageIcon, ShieldCheck, FolderOpen, Plus } from 'lucide-react';
 import { ImageModelType, AuthMode, JobSummary } from '../types';
 import { getMediaUrl } from '../utils/media';
-import { JobSelectorDropdown } from './JobSelectorDropdown';
+import { ProjectsModal } from './ProjectsModal';
 
 interface HeaderProps {
   apiKey: string;
@@ -22,6 +22,8 @@ interface HeaderProps {
   saveStatus: 'saved' | 'saving' | 'error';
   onSelectJob: (jobId: string) => void;
   onCreateNewJob: () => void;
+  onDeleteJob: (jobId: string) => Promise<void>;
+  onRefreshJobs: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -41,7 +43,10 @@ export const Header: React.FC<HeaderProps> = ({
   saveStatus,
   onSelectJob,
   onCreateNewJob,
+  onDeleteJob,
+  onRefreshJobs,
 }) => {
+  const [showProjectsModal, setShowProjectsModal] = useState(false);
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [showTestModal, setShowTestModal] = useState(false);
   const [showLogsModal, setShowLogsModal] = useState(false);
@@ -129,6 +134,9 @@ export const Header: React.FC<HeaderProps> = ({
     },
   };
 
+  const activeJob = jobs.find((j) => j.jobId === currentJobId);
+  const activeCustomerName = activeJob?.customerName || 'Projects';
+
   return (
     <header className="border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex items-center justify-between shadow-sm transition-colors duration-200">
       {/* Brand & Logo */}
@@ -161,16 +169,66 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        {/* Multi-User GCS Job Switcher Dropdown */}
-        <JobSelectorDropdown
-          currentJobId={currentJobId}
-          jobs={jobs}
-          isLoading={isLoadingJobs}
-          saveStatus={saveStatus}
-          onSelectJob={onSelectJob}
-          onCreateNewJob={onCreateNewJob}
-        />
+      <div className="flex items-center gap-2.5">
+        {/* Projects Popup Button */}
+        <button
+          type="button"
+          onClick={() => setShowProjectsModal(true)}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold text-xs shadow-sm transition-all active:scale-95 group"
+          title="Open Projects Management"
+        >
+          <FolderOpen className="w-4 h-4 text-[#4285F4] group-hover:scale-110 transition-transform" />
+          <span className="truncate max-w-[150px]">{activeCustomerName}</span>
+          <span className="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-extrabold text-slate-700 dark:text-slate-300">
+            {jobs.length}
+          </span>
+        </button>
+
+        {/* Live Auto-Save Indicator */}
+        <div
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold border transition-all ${
+            saveStatus === 'saving'
+              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
+              : saveStatus === 'error'
+              ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30'
+              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+          }`}
+          title={
+            saveStatus === 'saving'
+              ? 'Saving to Google Cloud Storage...'
+              : saveStatus === 'error'
+              ? 'Failed to auto-save to Cloud Storage'
+              : 'All project changes synced to Google Cloud Storage'
+          }
+        >
+          {saveStatus === 'saving' ? (
+            <>
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              <span className="hidden sm:inline">Saving...</span>
+            </>
+          ) : saveStatus === 'error' ? (
+            <>
+              <X className="w-3.5 h-3.5 text-rose-500" />
+              <span className="hidden sm:inline">Save Error</span>
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Saved</span>
+            </>
+          )}
+        </div>
+
+        {/* New Project Quick Button */}
+        <button
+          type="button"
+          onClick={onCreateNewJob}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all active:scale-95"
+          title="Create a new countdown project"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">New Project</span>
+        </button>
 
         {/* Light / Dark Mode Toggle Button */}
         <button
@@ -182,6 +240,19 @@ export const Header: React.FC<HeaderProps> = ({
           {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
         </button>
       </div>
+
+      {/* Projects Management Modal */}
+      <ProjectsModal
+        isOpen={showProjectsModal}
+        onClose={() => setShowProjectsModal(false)}
+        currentJobId={currentJobId}
+        jobs={jobs}
+        isLoading={isLoadingJobs}
+        onSelectJob={onSelectJob}
+        onCreateNewJob={onCreateNewJob}
+        onDeleteJob={onDeleteJob}
+        onRefreshJobs={onRefreshJobs}
+      />
 
       {/* PORTAL MODAL 1: Log Analysis Modal */}
       {showLogsModal &&

@@ -20,6 +20,7 @@ import {
   saveJobStateToGcs,
   loadJobStateFromGcs,
   listAllJobsFromGcs,
+  deleteJobFromGcs,
   uploadAssetToGcs,
   getAssetFile,
   StoredJobState,
@@ -371,6 +372,22 @@ app.put('/api/jobs/:jobId', requireCloudspaceDomain, async (req, res) => {
     res.json({ success: true, job: updatedState });
   } catch (err: any) {
     addLog('ERROR', 'SYSTEM', `Error auto-saving job ${req.params.jobId}: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete a specific job by ID from GCS
+app.delete('/api/jobs/:jobId', requireCloudspaceDomain, async (req, res) => {
+  try {
+    const jobId = String(req.params.jobId);
+    const success = await deleteJobFromGcs(jobId);
+    if (!success) {
+      return res.status(500).json({ error: `Failed to delete job ${jobId} from GCS` });
+    }
+    addLog('INFO', 'SYSTEM', `Successfully deleted job ${jobId} and all associated assets from GCS`);
+    res.json({ success: true, message: `Job ${jobId} deleted successfully` });
+  } catch (err: any) {
+    addLog('ERROR', 'SYSTEM', `Error deleting job ${req.params.jobId}: ${err.message}`);
     res.status(500).json({ error: err.message });
   }
 });

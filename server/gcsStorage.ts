@@ -159,3 +159,14 @@ export function getAssetFile(
   const file = bucket.file(`jobs/${jobId}/${subfolder}/${filename}`);
   return file;
 }
+
+// Delete an entire job and all its assets from GCS (jobs/{jobId}/)
+export async function deleteJobFromGcs(jobId: string): Promise<boolean> {
+  try {
+    await bucket.deleteFiles({ prefix: `jobs/${jobId}/` });
+    return true;
+  } catch (err: any) {
+    console.error(`[GCS_STORAGE] Error deleting job ${jobId}:`, err.message);
+    return false;
+  }
+}

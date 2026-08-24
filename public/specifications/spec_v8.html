@@ -366,10 +366,10 @@
       </p>
       <ul>
         <li><strong>Environment Variable Configuration:</strong> Protected by the secure <code>APP_PASSWORD</code> secret injected via GCP Cloud Run environment variables / Secret Manager.</li>
-        <li><strong>Universal Multi-User Job Identity:</strong> Every project receives a unique, human-readable ID formatted as <code>[CustomerName]-[RANDOM_5_CHARS]</code> (e.g. <code>Lufthansa_Group-7K9XM</code>).</li>
+        <li><strong>Customer-Centric Project Naming:</strong> Projects are named strictly by the Customer / Brand Name (e.g. <code>Adidas</code>, <code>Lufthansa Group</code>, <code>Porsche Motorsport</code>). Updating the brand field dynamically synchronizes the project title.</li>
         <li><strong>Google Cloud Storage Persistence:</strong> All project state JSON files, starting frame PNG images, Veo 3.1 video clips, and exported master videos are persisted in <code>gs://magic-countdown-generator-aosterloh-cs-muc/jobs/{jobId}/</code>. Closing browsers or restarting Cloud Run instances never loses work.</li>
-        <li><strong>Top-Bar Universal Job Switcher:</strong> Searchable dropdown menu allows any user to browse and switch between past and active projects, showing current stage badges and relative update times.</li>
-        <li><strong>URL Deep Linking & Continuous Auto-Save:</strong> Projects support direct URL access (<code>?job=Lufthansa_Group-7K9XM</code>) and auto-save changes continuously with live <code>[ ☁️ Saved ]</code> UI synchronization.</li>
+        <li><strong>Projects Popup Management Modal:</strong> Clicking the header <code>[ 📁 Projects ]</code> button opens an interactive modal listing all past projects with stage status badges (<code>🌟 Master Ready</code>, <code>🎬 Veo Videos (X/10)</code>, <code>✨ Images (X/10)</code>), relative update timestamps, one-click <strong>Open Project</strong>, and permanent <strong>Delete Project</strong> with inline confirmation.</li>
+        <li><strong>URL Deep Linking & Continuous Auto-Save:</strong> Projects support direct URL access (<code>?job=...</code>) and auto-save changes continuously with live <code>[ ☁️ Saved ]</code> UI synchronization.</li>
       </ul>
     </section>
 
