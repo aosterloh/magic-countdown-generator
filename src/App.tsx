@@ -580,6 +580,7 @@ export const App: React.FC = () => {
           model: selectedModel,
           apiKey,
           authMode,
+          jobId: currentJobId,
         }),
       });
       const data = await res.json();
@@ -652,6 +653,7 @@ export const App: React.FC = () => {
     formData.append('slotIndex', slotIndex.toString());
     formData.append('customPrompt', customPrompt);
     formData.append('brandName', brandName);
+    formData.append('jobId', currentJobId || '');
     if (brandRefFile) {
       formData.append('brandReference', brandRefFile);
     }
@@ -722,6 +724,7 @@ export const App: React.FC = () => {
           qualityMode,
           apiKey,
           authMode,
+          jobId: currentJobId,
         }),
       });
       const data = await res.json();
@@ -793,6 +796,8 @@ export const App: React.FC = () => {
             rawVideoUri: s.rawVideoUri,
             temporalConfig: s.temporalConfig,
           })),
+          qualityMode: selectedVideoQuality,
+          jobId: currentJobId,
         }),
       });
       const data = await res.json();

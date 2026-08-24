@@ -22,7 +22,7 @@ import {
   listAllJobsFromGcs,
   deleteJobFromGcs,
   uploadAssetToGcs,
-  getAssetFile,
+  ensureLocalAssetFile,
   StoredJobState,
 } from './gcsStorage';
 
@@ -38,17 +38,18 @@ const PUBLIC_DIR = path.join(WORKSPACE_ROOT, 'public');
 const DIST_DIR = path.join(WORKSPACE_ROOT, 'dist');
 const AUDIO_TRACK_PATH = path.join(PUBLIC_DIR, 'countdown', 'countdown_track.mp3');
 
-// In-Memory Live Log Ring Buffer
+// Simple log buffer for UI log inspection
 interface LogEntry {
   id: string;
   timestamp: string;
   level: 'INFO' | 'SUCCESS' | 'WARN' | 'ERROR';
-  category: 'GEMINI_AI' | 'VEO_AI' | 'ADC_AUTH' | 'FFMPEG' | 'SYSTEM';
+  category: 'GEMINI_AI' | 'VEO_AI' | 'ADC_AUTH' | 'FFMPEG' | 'TEMPORAL' | 'SYSTEM';
   message: string;
-  details?: any;
+  details?: string;
 }
+
 const serverLogs: LogEntry[] = [];
-function addLog(level: LogEntry['level'], category: LogEntry['category'], message: string, details?: any) {
+function addLog(level: LogEntry['level'], category: LogEntry['category'], message: string, details?: string) {
   const entry: LogEntry = {
     id: Math.random().toString(36).substring(2, 9),
     timestamp: new Date().toISOString(),
@@ -59,16 +60,10 @@ function addLog(level: LogEntry['level'], category: LogEntry['category'], messag
   };
   serverLogs.unshift(entry);
   if (serverLogs.length > 200) serverLogs.pop();
-  console.log(`[${entry.category}][${entry.level}] ${entry.message}`);
+  console.log(`[${entry.timestamp}] [${level}] [${category}] ${message}`);
 }
 
-// Initial boot log
-addLog('INFO', 'SYSTEM', `CountdownMaker Backend Booted on port ${PORT}`);
-if (process.env.GEMINI_API_KEY) {
-  addLog('SUCCESS', 'GEMINI_AI', `Loaded GEMINI_API_KEY from environment (${process.env.GEMINI_API_KEY.slice(0, 8)}...)`);
-}
-
-// Ensure directories exist
+// Ensure required directories exist
 [UPLOADS_DIR, OUTPUT_DIR, path.join(PUBLIC_DIR, 'countdown')].forEach((dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -79,7 +74,25 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Static file hosting
+// Static file hosting with GCS persistence fallback
+app.get('/output/:filename', async (req, res, next) => {
+  const filename = req.params.filename;
+  const localPath = path.join(OUTPUT_DIR, filename);
+  if (fs.existsSync(localPath)) {
+    return res.sendFile(localPath);
+  }
+
+  try {
+    const fetched = await ensureLocalAssetFile(`/output/${filename}`, WORKSPACE_ROOT, OUTPUT_DIR);
+    if (fs.existsSync(fetched)) {
+      return res.sendFile(fetched);
+    }
+  } catch (e: any) {
+    console.warn(`[OUTPUT_GCS_FALLBACK] Error loading ${filename}:`, e.message);
+  }
+
+  res.status(404).json({ error: `Output file ${filename} not found` });
+});
 app.use('/output', express.static(OUTPUT_DIR));
 app.use('/uploads', express.static(UPLOADS_DIR));
 app.use('/countdown', express.static(path.join(PUBLIC_DIR, 'countdown')));
@@ -392,24 +405,24 @@ app.delete('/api/jobs/:jobId', requireCloudspaceDomain, async (req, res) => {
   }
 });
 
-// Stream or download a GCS media asset
+// Stream or download a GCS media asset with native range support and local container caching
 app.get('/api/jobs/:jobId/assets/:subfolder/:filename', async (req, res) => {
   try {
     const jobId = String(req.params.jobId);
     const subfolder = String(req.params.subfolder);
     const filename = String(req.params.filename);
-    const file = getAssetFile(jobId, subfolder, filename);
+    const localPath = path.join(OUTPUT_DIR, filename);
 
-    const [exists] = await file.exists();
-    if (!exists) {
-      return res.status(404).json({ error: 'Asset not found in GCS' });
+    if (fs.existsSync(localPath)) {
+      return res.sendFile(localPath);
     }
 
-    const [metadata] = await file.getMetadata();
-    res.setHeader('Content-Type', (metadata.contentType as string) || 'application/octet-stream');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    const fetched = await ensureLocalAssetFile(`api/jobs/${jobId}/assets/${subfolder}/${filename}`, WORKSPACE_ROOT, OUTPUT_DIR);
+    if (fs.existsSync(fetched)) {
+      return res.sendFile(fetched);
+    }
 
-    file.createReadStream().pipe(res);
+    res.status(404).json({ error: 'Asset not found in GCS' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -642,7 +655,7 @@ Return ONLY a single valid JSON object:
 // 2. Generate Image for Slot (Gemini 2.5 Flash Image / Nano Banana)
 app.post('/api/generate-image', requireCloudspaceDomain, async (req, res) => {
   try {
-    const { slotIndex, prompt, brandName = 'Porsche Motorsport', apiKey } = req.body;
+    const { slotIndex, prompt, brandName = 'Porsche Motorsport', apiKey, jobId = 'global' } = req.body;
     const filename = `slot_${slotIndex}_${Date.now()}.png`;
     const outputPath = path.join(OUTPUT_DIR, filename);
 
@@ -704,14 +717,29 @@ app.post('/api/generate-image', requireCloudspaceDomain, async (req, res) => {
       }
 
       addLog('SUCCESS', 'GEMINI_AI', `Synthesized 16:9 AI Image for Shot #${slotIndex} with ${usedModel} (1920x1080)`);
-      return res.json({ success: true, imageUri: `/output/${filename}`, auth: 'AI_MODEL', model: usedModel });
+      
+      let finalImageUri = `/output/${filename}`;
+      try {
+        finalImageUri = await uploadAssetToGcs(jobId, outputPath, 'images', filename);
+      } catch (gcsErr: any) {
+        console.warn(`[GCS_UPLOAD] Failed to upload image ${filename} to GCS:`, gcsErr.message);
+      }
+
+      return res.json({ success: true, imageUri: finalImageUri, auth: 'AI_MODEL', model: usedModel });
     }
 
     renderDiegeticVisualFrame(slotIndex, outputPath, brandName || 'Porsche Motorsport');
     addLog('INFO', 'GEMINI_AI', `Rendered Diegetic 16:9 Frame for Shot #${slotIndex}`);
     await new Promise((resolve) => setTimeout(resolve, 800));
 
-    return res.json({ success: true, imageUri: `/output/${filename}`, auth: 'ADC_DIEGETIC' });
+    let fallbackImageUri = `/output/${filename}`;
+    try {
+      fallbackImageUri = await uploadAssetToGcs(jobId, outputPath, 'images', filename);
+    } catch (gcsErr: any) {
+      console.warn(`[GCS_UPLOAD] Failed to upload procedural image ${filename} to GCS:`, gcsErr.message);
+    }
+
+    return res.json({ success: true, imageUri: fallbackImageUri, auth: 'ADC_DIEGETIC' });
   } catch (err: any) {
     addLog('ERROR', 'GEMINI_AI', `Error in generate-image for Slot #${req.body.slotIndex}: ${err.message}`);
     res.status(500).json({ success: false, error: err.message });
@@ -837,6 +865,7 @@ app.post('/api/test-gemini-api', requireCloudspaceDomain, async (req, res) => {
 app.post('/api/refine-image', requireCloudspaceDomain, upload.fields([{ name: 'brandReference', maxCount: 1 }]), async (req, res) => {
   try {
     const slotIndex = parseInt(req.body.slotIndex, 10);
+    const jobId = req.body.jobId || 'global';
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const brandRefFile = files?.brandReference?.[0];
 
@@ -845,9 +874,16 @@ app.post('/api/refine-image', requireCloudspaceDomain, upload.fields([{ name: 'b
 
     renderDiegeticVisualFrame(slotIndex, outputPath, req.body.brandName || 'Porsche Motorsport');
 
+    let finalImageUri = `/output/${filename}`;
+    try {
+      finalImageUri = await uploadAssetToGcs(jobId, outputPath, 'images', filename);
+    } catch (gcsErr: any) {
+      console.warn(`[GCS_UPLOAD] Failed to upload refined image to GCS:`, gcsErr.message);
+    }
+
     return res.json({
       success: true,
-      imageUri: `/output/${filename}`,
+      imageUri: finalImageUri,
       brandReferenceUri: brandRefFile ? `/uploads/${brandRefFile.filename}` : undefined,
     });
   } catch (err: any) {
@@ -1141,19 +1177,19 @@ async function synthesizeVeoVideo(
 // 4. Generate Veo 3 Video (Strict Real Veo Image-to-Video AI Synthesis)
 app.post('/api/generate-video', requireCloudspaceDomain, async (req, res) => {
   try {
-    const { slotIndex, imageUri, videoPrompt, apiKey, qualityMode = 'FAST_720P' } = req.body;
+    const { slotIndex, imageUri, videoPrompt, apiKey, qualityMode = 'FAST_720P', jobId = 'global' } = req.body;
     if (!imageUri) {
       return res.status(400).json({ error: 'imageUri is required' });
     }
 
-    const inputImagePath = path.join(WORKSPACE_ROOT, imageUri.replace(/^\//, ''));
+    const inputImagePath = await ensureLocalAssetFile(imageUri, WORKSPACE_ROOT, OUTPUT_DIR);
     const is4K = qualityMode === 'FULL_4K';
     const tag = is4K ? 'full_4k' : 'fast_720p';
     const videoFilename = `slot_${slotIndex}_veo_${tag}_${Date.now()}.mp4`;
     const rawVideoPath = path.join(OUTPUT_DIR, videoFilename);
 
     if (!fs.existsSync(inputImagePath)) {
-      return res.status(404).json({ error: 'Input image file does not exist on server' });
+      return res.status(404).json({ error: 'Input image file could not be retrieved on server' });
     }
 
     const imageBuffer = fs.readFileSync(inputImagePath);
@@ -1177,9 +1213,17 @@ app.post('/api/generate-video', requireCloudspaceDomain, async (req, res) => {
       }
 
       addLog('SUCCESS', 'VEO_AI', `Real Veo 3 Muted Video written to ${videoFilename} (${veoResult.modelUsed})`);
+      
+      let finalVideoUri = `/output/${videoFilename}`;
+      try {
+        finalVideoUri = await uploadAssetToGcs(jobId, rawVideoPath, 'videos', videoFilename);
+      } catch (gcsErr: any) {
+        console.warn(`[GCS_UPLOAD] Failed to upload video ${videoFilename} to GCS:`, gcsErr.message);
+      }
+
       return res.json({
         success: true,
-        rawVideoUri: `/output/${videoFilename}`,
+        rawVideoUri: finalVideoUri,
         qualityMode,
         isRealVeo: true,
         modelUsed: veoResult.modelUsed,
@@ -1201,18 +1245,19 @@ app.post('/api/generate-video', requireCloudspaceDomain, async (req, res) => {
 // 5. Process Temporal Alignment (FFmpeg Speed/Trim for Veo 3 Video)
 app.post('/api/process-temporal-video', requireCloudspaceDomain, async (req, res) => {
   try {
-    const { slotIndex, rawVideoUri, temporalConfig, qualityMode = 'FAST_720P' } = req.body as {
+    const { slotIndex, rawVideoUri, temporalConfig, qualityMode = 'FAST_720P', jobId = 'global' } = req.body as {
       slotIndex: number;
       rawVideoUri: string;
       temporalConfig: SlotTemporalConfig;
       qualityMode?: 'FAST_720P' | 'FULL_4K';
+      jobId?: string;
     };
 
     if (!rawVideoUri || !temporalConfig) {
       return res.status(400).json({ error: 'rawVideoUri and temporalConfig are required' });
     }
 
-    const inputVideoPath = path.join(WORKSPACE_ROOT, rawVideoUri.replace(/^\//, ''));
+    const inputVideoPath = await ensureLocalAssetFile(rawVideoUri, WORKSPACE_ROOT, OUTPUT_DIR);
     const is4K = qualityMode === 'FULL_4K';
     const tag = is4K ? 'full_4k' : 'fast_720p';
     const outputFilename = `slot_${slotIndex}_processed_${tag}_${Date.now()}.mp4`;
@@ -1222,9 +1267,16 @@ app.post('/api/process-temporal-video', requireCloudspaceDomain, async (req, res
     addLog('INFO', 'FFMPEG', `Processing temporal alignment for Shot #${slotIndex} (mode: ${temporalConfig.mode}, target: ${temporalConfig.targetDurationSeconds}s, tier: ${qualityMode})...`);
     await execFFmpeg(ffmpegArgs);
 
+    let finalProcessedUri = `/output/${outputFilename}`;
+    try {
+      finalProcessedUri = await uploadAssetToGcs(jobId, processedVideoPath, 'videos', outputFilename);
+    } catch (gcsErr: any) {
+      console.warn(`[GCS_UPLOAD] Failed to upload processed video ${outputFilename} to GCS:`, gcsErr.message);
+    }
+
     return res.json({
       success: true,
-      processedVideoUri: `/output/${outputFilename}`,
+      processedVideoUri: finalProcessedUri,
       qualityMode,
     });
   } catch (err: any) {
@@ -1236,7 +1288,7 @@ app.post('/api/process-temporal-video', requireCloudspaceDomain, async (req, res
 // 6. Master Export (Concat 10 slots + 30s Audio Track Mix)
 app.post('/api/export-master', requireCloudspaceDomain, async (req, res) => {
   try {
-    const { slotsConfig, qualityMode = 'FAST_720P' } = req.body as {
+    const { slotsConfig, qualityMode = 'FAST_720P', jobId = 'global' } = req.body as {
       slotsConfig: {
         index: number;
         processedVideoUri: string | null;
@@ -1244,6 +1296,7 @@ app.post('/api/export-master', requireCloudspaceDomain, async (req, res) => {
         temporalConfig: SlotTemporalConfig;
       }[];
       qualityMode?: 'FAST_720P' | 'FULL_4K';
+      jobId?: string;
     };
 
     if (!slotsConfig || slotsConfig.length !== 10) {
@@ -1251,13 +1304,15 @@ app.post('/api/export-master', requireCloudspaceDomain, async (req, res) => {
     }
 
     const sortedSlots = [...slotsConfig].sort((a, b) => b.index - a.index);
-    const inputVideoPaths = sortedSlots.map((s) => {
-      const targetUri = s.processedVideoUri || s.rawVideoUri;
-      if (!targetUri) {
-        throw new Error(`Slot ${s.index} does not have a generated video.`);
-      }
-      return path.join(WORKSPACE_ROOT, targetUri.replace(/^\//, ''));
-    });
+    const inputVideoPaths = await Promise.all(
+      sortedSlots.map(async (s) => {
+        const targetUri = s.processedVideoUri || s.rawVideoUri;
+        if (!targetUri) {
+          throw new Error(`Slot ${s.index} does not have a generated video.`);
+        }
+        return await ensureLocalAssetFile(targetUri, WORKSPACE_ROOT, OUTPUT_DIR);
+      })
+    );
 
     const is4K = qualityMode === 'FULL_4K';
     const outputFilename = `master_countdown_${is4K ? '4k' : '720p'}_30s_${Date.now()}.mp4`;
@@ -1277,10 +1332,17 @@ app.post('/api/export-master', requireCloudspaceDomain, async (req, res) => {
     addLog('INFO', 'FFMPEG', `Exporting 30.0s Master Countdown Video (${totalVideoDuration}s total duration, quality: ${qualityMode})...`);
     await execFFmpeg(ffmpegArgs);
 
+    let finalMasterUri = `/output/${outputFilename}`;
+    try {
+      finalMasterUri = await uploadAssetToGcs(jobId, masterOutputPath, 'master', outputFilename);
+    } catch (gcsErr: any) {
+      console.warn(`[GCS_UPLOAD] Failed to upload master video ${outputFilename} to GCS:`, gcsErr.message);
+    }
+
     addLog('SUCCESS', 'FFMPEG', `Master 30.0s Countdown Video (${qualityMode}) exported successfully: ${outputFilename}`);
     return res.json({
       success: true,
-      masterVideoUri: `/output/${outputFilename}`,
+      masterVideoUri: finalMasterUri,
       totalDuration: totalVideoDuration,
       qualityMode,
     });

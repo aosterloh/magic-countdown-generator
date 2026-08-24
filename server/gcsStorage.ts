@@ -150,14 +150,50 @@ export async function uploadAssetToGcs(
   return `/api/jobs/${jobId}/assets/${subfolder}/${filename}`;
 }
 
-// Stream or download an asset from GCS
-export function getAssetFile(
-  jobId: string,
-  subfolder: string,
-  filename: string
-) {
-  const file = bucket.file(`jobs/${jobId}/${subfolder}/${filename}`);
-  return file;
+// Download and ensure an asset exists locally in the container cache
+export async function ensureLocalAssetFile(
+  uri: string,
+  workspaceRoot: string,
+  outputDir: string
+): Promise<string> {
+  const cleanUri = uri.replace(/^\//, '');
+  const localDirect = path.join(workspaceRoot, cleanUri);
+  if (fs.existsSync(localDirect)) {
+    return localDirect;
+  }
+
+  const filename = path.basename(cleanUri);
+  const localOutput = path.join(outputDir, filename);
+  if (fs.existsSync(localOutput)) {
+    return localOutput;
+  }
+
+  // Parse if uri is /api/jobs/:jobId/assets/:subfolder/:filename
+  const match = cleanUri.match(/^api\/jobs\/([^\/]+)\/assets\/([^\/]+)\/(.+)$/);
+  if (match) {
+    const [, jobId, subfolder, filePart] = match;
+    const gcsPath = `jobs/${jobId}/${subfolder}/${filePart}`;
+    const gcsFile = bucket.file(gcsPath);
+    const [exists] = await gcsFile.exists();
+    if (exists) {
+      await gcsFile.download({ destination: localOutput });
+      return localOutput;
+    }
+  }
+
+  // Fallback: search GCS bucket by filename
+  try {
+    const [files] = await bucket.getFiles({ prefix: 'jobs/' });
+    const targetFile = files.find((f) => f.name.endsWith(`/${filename}`));
+    if (targetFile) {
+      await targetFile.download({ destination: localOutput });
+      return localOutput;
+    }
+  } catch (e: any) {
+    console.warn(`[GCS_STORAGE] Failed to find ${filename} in GCS:`, e.message);
+  }
+
+  return localDirect;
 }
 
 // Delete an entire job and all its assets from GCS (jobs/{jobId}/)
@@ -170,3 +206,4 @@ export async function deleteJobFromGcs(jobId: string): Promise<boolean> {
     return false;
   }
 }
+
