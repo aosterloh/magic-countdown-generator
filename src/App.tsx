@@ -217,6 +217,9 @@ export const App: React.FC = () => {
         setCurrentStage(1);
         setSlots(initialSlots);
         setMasterVideoUri(null);
+        setGlobalError(null);
+        setExportError(null);
+        setPreviewVideoUri(null);
 
         // Update URL query parameter
         const url = new URL(window.location.href);
@@ -233,23 +236,24 @@ export const App: React.FC = () => {
     }
   };
 
-  // Initial Load: URL Deep Linking or Most Recent Job
+  // Initial Load: URL Deep Linking or Clean Fresh Project
   useEffect(() => {
     const initAppJob = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const urlJobId = urlParams.get('job');
-      const jobs = await fetchJobsList();
+      await fetchJobsList();
 
+      // Only load a past job if explicitly specified via ?job= query parameter
       if (urlJobId) {
         const loaded = await loadJob(urlJobId);
         if (loaded) return;
       }
 
-      if (jobs && jobs.length > 0) {
-        await loadJob(jobs[0].jobId);
-      } else {
-        await createAndSelectNewJob('Lufthansa Group', 'Aviation Countdown');
-      }
+      // Otherwise, always start with a clean, fresh project
+      await createAndSelectNewJob(
+        'Lufthansa Group',
+        'Aviation excellence across aircraft hangar, flight crew preparations, wet runway operations, golden hour takeoff, first-class passengers, and turbofan engine maintenance'
+      );
     };
 
     initAppJob();
