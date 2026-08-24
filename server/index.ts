@@ -302,8 +302,8 @@ app.get('/api/jobs', requireCloudspaceDomain, async (req, res) => {
 app.post('/api/jobs', requireCloudspaceDomain, async (req, res) => {
   try {
     const {
-      customerName = 'Lufthansa Group',
-      creativeTheme = 'Aviation Countdown',
+      customerName = 'Project',
+      creativeTheme = '',
       styleModifiers = '',
       selectedModel = 'gemini-3.1-flash-image',
       selectedVideoQuality = 'FAST_720P',

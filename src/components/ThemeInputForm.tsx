@@ -5,18 +5,29 @@ import { UNIVERSAL_STYLE_ANCHOR } from '../utils/promptBuilder';
 interface ThemeInputFormProps {
   onGeneratePrompts: (brand: string, theme: string, styleAnchor: string) => Promise<void>;
   isLoading: boolean;
+  initialBrandName?: string;
+  initialThemeContext?: string;
 }
 
 export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
   onGeneratePrompts,
   isLoading,
+  initialBrandName = '',
+  initialThemeContext = '',
 }) => {
-  const [brandName, setBrandName] = useState('Lufthansa Group');
-  const [themeContext, setThemeContext] = useState(
-    'Aviation excellence across aircraft hangar, flight crew preparations, wet runway operations, golden hour takeoff, first-class passengers, and turbofan engine maintenance'
-  );
+  const [brandName, setBrandName] = useState(initialBrandName);
+  const [themeContext, setThemeContext] = useState(initialThemeContext);
   const [styleAnchor, setStyleAnchor] = useState(UNIVERSAL_STYLE_ANCHOR);
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Sync state if initial props change
+  React.useEffect(() => {
+    if (initialBrandName !== undefined) setBrandName(initialBrandName);
+  }, [initialBrandName]);
+
+  React.useEffect(() => {
+    if (initialThemeContext !== undefined) setThemeContext(initialThemeContext);
+  }, [initialThemeContext]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,8 +73,8 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
               required
               value={brandName}
               onChange={(e) => setBrandName(e.target.value)}
-              placeholder="e.g. Porsche Motorsport, Google Cloud, McLaren"
-              className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:border-[#4285F4] focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
+              placeholder="Enter customer name, e.g. Adidas"
+              className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm focus:outline-none focus:border-[#4285F4] focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
             />
           </div>
 
@@ -75,8 +86,8 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
               type="text"
               value={themeContext}
               onChange={(e) => setThemeContext(e.target.value)}
-              placeholder="e.g. Autonomous aerospace wind tunnel, titanium engine gauges"
-              className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:border-[#4285F4] focus:ring-2 focus:ring-blue-500/20 transition-all"
+              placeholder="Enter ideas for visuals like tennis court, soccer game, basketball shoes, padel game ..."
+              className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm focus:outline-none focus:border-[#4285F4] focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
           </div>
         </div>

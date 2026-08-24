@@ -64,10 +64,8 @@ export const App: React.FC = () => {
 
   // Multi-step Workflow State (1 to 5)
   const [currentStage, setCurrentStage] = useState<number>(1);
-  const [brandName, setBrandName] = useState<string>('Lufthansa Group');
-  const [themeContext, setThemeContext] = useState<string>(
-    'Aviation excellence across aircraft hangar, flight crew preparations, wet runway operations, golden hour takeoff, first-class passengers, and turbofan engine maintenance'
-  );
+  const [brandName, setBrandName] = useState<string>('');
+  const [themeContext, setThemeContext] = useState<string>('');
   const [styleModifiers, setStyleModifiers] = useState<string>('');
 
   // Countdown Slots (10 down to 1)
@@ -140,7 +138,7 @@ export const App: React.FC = () => {
       if (data.success && data.job) {
         const j = data.job;
         setCurrentJobId(j.jobId);
-        setBrandName(j.customerName || 'Lufthansa Group');
+        setBrandName(j.customerName || '');
         setThemeContext(j.creativeTheme || '');
         if (j.styleModifiers !== undefined) setStyleModifiers(j.styleModifiers);
         if (j.selectedModel) setSelectedModel(j.selectedModel);
@@ -164,8 +162,8 @@ export const App: React.FC = () => {
   };
 
   const createAndSelectNewJob = async (
-    customer: string = 'Lufthansa Group',
-    theme: string = 'Aviation Countdown'
+    customer: string = '',
+    theme: string = ''
   ) => {
     setIsLoadingJobs(true);
     try {
@@ -200,7 +198,7 @@ export const App: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: customer,
+          customerName: customer || 'New Project',
           creativeTheme: theme,
           selectedModel,
           selectedVideoQuality,
@@ -212,14 +210,12 @@ export const App: React.FC = () => {
       const data = await res.json();
       if (data.success && data.job) {
         setCurrentJobId(data.job.jobId);
-        setBrandName(data.job.customerName);
-        setThemeContext(data.job.creativeTheme);
+        setBrandName(customer);
+        setThemeContext(theme);
         setCurrentStage(1);
         setSlots(initialSlots);
         setMasterVideoUri(null);
         setGlobalError(null);
-        setExportError(null);
-        setPreviewVideoUri(null);
 
         // Update URL query parameter
         const url = new URL(window.location.href);
@@ -230,7 +226,7 @@ export const App: React.FC = () => {
         return data.job;
       }
     } catch (e) {
-      console.error('Failed to create new job:', e);
+      console.error('Failed to create new job in GCS:', e);
     } finally {
       setIsLoadingJobs(false);
     }
@@ -330,7 +326,7 @@ export const App: React.FC = () => {
   };
 
   const handleCreateNewJob = () => {
-    createAndSelectNewJob(brandName || 'Lufthansa Group', 'Countdown');
+    createAndSelectNewJob('', '');
   };
 
   const handleDeleteJob = async (jobIdToDelete: string) => {
@@ -344,7 +340,7 @@ export const App: React.FC = () => {
           if (remaining && remaining.length > 0) {
             await loadJob(remaining[0].jobId);
           } else {
-            await createAndSelectNewJob('Lufthansa Group', 'Aviation Countdown');
+            await createAndSelectNewJob('', '');
           }
         }
       }
@@ -407,6 +403,34 @@ export const App: React.FC = () => {
     setIsGeneratingPrompts(true);
     setGlobalError(null);
     setGenerationStatusText('Synthesizing 10 Diegetic Prompts with Gemini...');
+
+    // Ensure Job ID matches the customer brand name so URL query param is accurate
+    const sanitizedBrand = (brand || '').trim().replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '') || 'Project';
+    if (!currentJobId || !currentJobId.startsWith(sanitizedBrand)) {
+      try {
+        const createRes = await fetch(`${API_BASE}/api/jobs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerName: brand || 'Project',
+            creativeTheme: theme,
+            selectedModel,
+            selectedVideoQuality,
+            currentStage: 1,
+            slots,
+          }),
+        });
+        const createData = await createRes.json();
+        if (createData.success && createData.job) {
+          setCurrentJobId(createData.job.jobId);
+          const url = new URL(window.location.href);
+          url.searchParams.set('job', createData.job.jobId);
+          window.history.replaceState({}, '', url.toString());
+        }
+      } catch (e) {
+        console.warn('Failed to sync job ID for brand:', e);
+      }
+    }
 
     try {
       const res = await fetch(`${API_BASE}/api/generate-diegetic-prompts`, {
@@ -880,6 +904,8 @@ export const App: React.FC = () => {
         <ThemeInputForm
           onGeneratePrompts={handleGeneratePrompts}
           isLoading={isGeneratingPrompts}
+          initialBrandName={brandName}
+          initialThemeContext={themeContext}
         />
 
         {/* STAGE 2: Review & Edit 10 Diegetic Prompts */}
@@ -890,8 +916,6 @@ export const App: React.FC = () => {
             themeContext={themeContext}
             onUpdatePrompt={handleUpdatePrompt}
             onRecreatePrompt={handleRecreatePrompt}
-            onToggleApprovePrompt={handleToggleApprovePrompt}
-            onApproveAllPrompts={handleApproveAllPrompts}
             onProceedToImageGeneration={handleProceedToImageGeneration}
             isGeneratingImages={isBatchGeneratingImages}
           />

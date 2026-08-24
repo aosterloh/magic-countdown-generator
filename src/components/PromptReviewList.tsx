@@ -8,8 +8,6 @@ interface PromptReviewListProps {
   themeContext: string;
   onUpdatePrompt: (slotIndex: number, newPrompt: string, newConcept?: string, newVideoPrompt?: string) => void;
   onRecreatePrompt: (slotIndex: number) => Promise<void>;
-  onToggleApprovePrompt: (slotIndex: number) => void;
-  onApproveAllPrompts: () => void;
   onProceedToImageGeneration: () => void;
   isGeneratingImages: boolean;
 }
@@ -20,8 +18,6 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
   themeContext,
   onUpdatePrompt,
   onRecreatePrompt,
-  onToggleApprovePrompt,
-  onApproveAllPrompts,
   onProceedToImageGeneration,
   isGeneratingImages,
 }) => {
@@ -42,9 +38,6 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
     2: 'bg-[#4285F4] text-white',
     1: 'bg-[#EA4335] text-white',
   };
-
-  const approvedCount = slots.filter((s) => s.isPromptApproved).length;
-  const allApproved = approvedCount === slots.length;
 
   const handleStartEdit = (slot: CountdownSlot, type: 'image' | 'video') => {
     setEditingSlotIndex(slot.index);
@@ -67,49 +60,33 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                Step 2: Review Coordinated Image & Video Reveal Prompts
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950 text-[#4285F4] border border-blue-200 dark:border-blue-800">
-                {approvedCount}/10 Approved
-              </span>
-            </div>
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+              Step 2: Review Coordinated Image & Video Reveal Prompts
+            </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               The starting images conceal/subtly frame the number; the coordinated Veo 3 camera motion reveals it.
             </p>
           </div>
         </div>
 
-        {/* Action Controls */}
+        {/* Action Button: Matched to Step 1 Generate 10 Text Prompts Button Size */}
         <div className="flex items-center gap-3 self-end md:self-center">
-          {!allApproved && (
-            <button
-              type="button"
-              onClick={onApproveAllPrompts}
-              className="px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-colors flex items-center gap-1.5 shadow-sm"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5 text-[#34A853]" />
-              <span>Approve All (10)</span>
-            </button>
-          )}
-
           <button
             type="button"
             onClick={onProceedToImageGeneration}
             disabled={isGeneratingImages}
-            className="px-6 py-2.5 rounded-2xl bg-[#4285F4] hover:bg-blue-600 active:scale-98 disabled:opacity-50 text-white font-bold text-xs shadow-lg shadow-blue-500/25 flex items-center gap-2 transition-all"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#4285F4] hover:bg-blue-600 active:scale-98 disabled:opacity-50 text-white font-bold text-sm shadow-xl shadow-blue-500/25 flex items-center justify-center gap-2.5 transition-all"
           >
             {isGeneratingImages ? (
               <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <RefreshCw className="w-4 h-4 animate-spin" />
                 <span>Synthesizing Images (2 Workers)...</span>
               </>
             ) : (
               <>
-                <Wand2 className="w-3.5 h-3.5" />
-                <span>Create Veo 3 Input Images ({approvedCount}/10 Ready)</span>
-                <ChevronRight className="w-3.5 h-3.5" />
+                <Wand2 className="w-4 h-4" />
+                <span>Create Veo 3 input images</span>
+                <ChevronRight className="w-4 h-4" />
               </>
             )}
           </button>
@@ -123,11 +100,7 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
           return (
             <div
               key={slot.index}
-              className={`p-5 rounded-2xl border transition-all space-y-3.5 ${
-                slot.isPromptApproved
-                  ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300/80 dark:border-emerald-800/80'
-                  : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-              }`}
+              className="p-5 rounded-2xl border transition-all space-y-3.5 bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
             >
               {/* Top Row: Badge, Concept, Reveal Mechanism, Toolbar */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -177,19 +150,6 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
                   >
                     {isEditing ? <Check className="w-3 h-3 text-[#34A853]" /> : <Edit3 className="w-3 h-3 text-slate-500" />}
                     <span>{isEditing ? 'Save Edit' : 'Edit Prompts'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => onToggleApprovePrompt(slot.index)}
-                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      slot.isPromptApproved
-                        ? 'bg-emerald-500 text-white shadow-sm'
-                        : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>{slot.isPromptApproved ? 'Approved' : 'Approve'}</span>
                   </button>
                 </div>
               </div>
@@ -270,30 +230,9 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
         })}
       </div>
 
-      {/* Bottom Sticky Action Bar */}
-      <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800/80">
-        <div className="text-xs text-slate-500">
-          All 10 prompts are coordinated for starting image framing and dynamic Veo 3 camera reveal.
-        </div>
-        <button
-          type="button"
-          onClick={onProceedToImageGeneration}
-          disabled={isGeneratingImages}
-          className="px-8 py-3.5 rounded-2xl bg-[#4285F4] hover:bg-blue-600 active:scale-98 disabled:opacity-50 text-white font-bold text-sm shadow-xl shadow-blue-500/25 flex items-center gap-2.5 transition-all"
-        >
-          {isGeneratingImages ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>Synthesizing Images (2 Workers)...</span>
-            </>
-          ) : (
-            <>
-              <Wand2 className="w-4 h-4" />
-              <span>Create Veo 3 Input Images</span>
-              <ChevronRight className="w-4 h-4" />
-            </>
-          )}
-        </button>
+      {/* Bottom Information Footer */}
+      <div className="pt-2 text-center text-xs text-slate-400 dark:text-slate-500">
+        All 10 prompts are coordinated for starting image framing and dynamic Veo 3 camera reveal.
       </div>
     </div>
   );
