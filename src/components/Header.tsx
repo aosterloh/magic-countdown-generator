@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Key, Activity, Sun, Moon, Sparkles, ExternalLink, CheckCircle2, X, Terminal, RefreshCw, Image as ImageIcon, ShieldCheck, FolderOpen, Plus } from 'lucide-react';
+import { Key, Activity, Sun, Moon, Sparkles, ExternalLink, CheckCircle2, X, Terminal, RefreshCw, Image as ImageIcon, ShieldCheck, FolderOpen, Plus, HelpCircle } from 'lucide-react';
 import { ImageModelType, AuthMode, JobSummary } from '../types';
 import { getMediaUrl } from '../utils/media';
 import { ProjectsModal } from './ProjectsModal';
+import { HelpModal } from './HelpModal';
 
 interface HeaderProps {
   apiKey: string;
@@ -47,6 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
   onRefreshJobs,
 }) => {
   const [showProjectsModal, setShowProjectsModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [showTestModal, setShowTestModal] = useState(false);
   const [showLogsModal, setShowLogsModal] = useState(false);
@@ -230,6 +232,17 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="hidden sm:inline">New Project</span>
         </button>
 
+        {/* Help Explainer Button */}
+        <button
+          type="button"
+          onClick={() => setShowHelpModal(true)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold text-xs shadow-sm transition-all active:scale-95 group"
+          title="How Magic Countdown Generator Works"
+        >
+          <HelpCircle className="w-4 h-4 text-[#4285F4] group-hover:scale-110 transition-transform" />
+          <span>Help</span>
+        </button>
+
         {/* Light / Dark Mode Toggle Button */}
         <button
           type="button"
@@ -252,6 +265,12 @@ export const Header: React.FC<HeaderProps> = ({
         onCreateNewJob={onCreateNewJob}
         onDeleteJob={onDeleteJob}
         onRefreshJobs={onRefreshJobs}
+      />
+
+      {/* Help Explainer Modal */}
+      <HelpModal
+        isOpen={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
       />
 
       {/* PORTAL MODAL 1: Log Analysis Modal */}
