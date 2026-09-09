@@ -48,49 +48,55 @@ describe('Temporal Math & Timeline Clamping', () => {
     expect(res.trimEnd).toBe(4.0);
   });
 
-  it('calculates exact cumulative timeline offsets for 10 slots', () => {
+  it('calculates exact cumulative timeline offsets for 10 slots with 1.0s dramatic pause', () => {
     const configs: { index: number; temporalConfig: SlotTemporalConfig }[] = [];
     for (let i = 10; i >= 1; i--) {
       configs.push({
         index: i,
         temporalConfig: {
-          mode: i % 2 === 0 ? 'SPEED_UP' : 'TRUNCATE_FRONT',
-          targetDurationSeconds: 3.0,
-          trimStartSeconds: 0,
-          trimEndSeconds: 3.0,
+          mode: 'TRUNCATE_FRONT',
+          targetDurationSeconds: i >= 7 ? 2.300 : 3.300,
+          trimStartSeconds: i >= 7 ? 1.700 : 0.700,
+          trimEndSeconds: 4.000,
         },
       });
     }
 
-    const { offsets, totalDuration } = calculateTimelineOffsets(configs);
+    const { offsets, totalDuration, hasDramaticPause } = calculateTimelineOffsets(configs);
     expect(offsets.length).toBe(10);
+    expect(hasDramaticPause).toBe(true);
     expect(totalDuration).toBe(30.0);
 
-    // Slot 10 starts at 0.0s and ends at 3.0s
+    // Slot 10 starts at 0.0s and ends at 2.3s
     expect(offsets[0].slotIndex).toBe(10);
     expect(offsets[0].startTime).toBe(0.0);
-    expect(offsets[0].endTime).toBe(3.0);
+    expect(offsets[0].endTime).toBe(2.3);
 
-    // Slot 9 starts at 3.0s and ends at 6.0s
-    expect(offsets[1].slotIndex).toBe(9);
-    expect(offsets[1].startTime).toBe(3.0);
-    expect(offsets[1].endTime).toBe(6.0);
+    // Slot 7 starts at 6.9s and ends at 9.2s
+    expect(offsets[3].slotIndex).toBe(7);
+    expect(offsets[3].startTime).toBe(6.9);
+    expect(offsets[3].endTime).toBe(9.2);
 
-    // Slot 1 starts at 27.0s and ends at 30.0s
+    // Slot 6 starts at 10.2s (after 1.0s pause) and ends at 13.5s
+    expect(offsets[4].slotIndex).toBe(6);
+    expect(offsets[4].startTime).toBe(10.2);
+    expect(offsets[4].endTime).toBe(13.5);
+
+    // Slot 1 starts at 26.7s and ends at 30.0s
     expect(offsets[9].slotIndex).toBe(1);
-    expect(offsets[9].startTime).toBe(27.0);
+    expect(offsets[9].startTime).toBe(26.7);
     expect(offsets[9].endTime).toBe(30.0);
   });
 
-  it('correctly maps master playhead time to active slot and local clip frame (DEF-02)', () => {
+  it('correctly maps master playhead time to active slot across the dramatic pause', () => {
     const configsMap: Record<number, SlotTemporalConfig> = {};
     const configsList = [];
     for (let i = 10; i >= 1; i--) {
       const cfg: SlotTemporalConfig = {
         mode: 'TRUNCATE_FRONT',
-        targetDurationSeconds: 3.0,
-        trimStartSeconds: 1.0,
-        trimEndSeconds: 4.0,
+        targetDurationSeconds: i >= 7 ? 2.300 : 3.300,
+        trimStartSeconds: i >= 7 ? 1.700 : 0.700,
+        trimEndSeconds: 4.000,
       };
       configsMap[i] = cfg;
       configsList.push({ index: i, temporalConfig: cfg });
@@ -98,14 +104,21 @@ describe('Temporal Math & Timeline Clamping', () => {
 
     const { offsets } = calculateTimelineOffsets(configsList);
 
-    // At t = 1.5s -> inside Slot 10 (offset 0.0..3.0). Local time = 1.0 + 1.5 = 2.5s
-    const mapping1 = mapPlayheadToSlotTime(1.5, offsets, configsMap);
+    // At t = 1.0s -> inside Slot 10 (offset 0.0..2.3). Local time = 1.70 + 1.0 = 2.70s
+    const mapping1 = mapPlayheadToSlotTime(1.0, offsets, configsMap);
     expect(mapping1.slotIndex).toBe(10);
-    expect(mapping1.localClipTime).toBe(2.5);
+    expect(mapping1.localClipTime).toBe(2.7);
+    expect(mapping1.isDramaticPause).toBe(false);
 
-    // At t = 4.0s -> inside Slot 9 (offset 3.0..6.0). Elapsed = 1.0s. Local time = 1.0 + 1.0 = 2.0s
-    const mapping2 = mapPlayheadToSlotTime(4.0, offsets, configsMap);
-    expect(mapping2.slotIndex).toBe(9);
-    expect(mapping2.localClipTime).toBe(2.0);
+    // At t = 9.5s -> inside 1.0s Dramatic Pause (9.2s..10.2s). MUST return isDramaticPause: true and NOT Slot 1!
+    const mappingPause = mapPlayheadToSlotTime(9.5, offsets, configsMap);
+    expect(mappingPause.isDramaticPause).toBe(true);
+    expect(mappingPause.slotIndex).toBe(0);
+
+    // At t = 10.5s -> inside Slot 6 (offset 10.2..13.5). Elapsed = 0.3s. Local time = 0.70 + 0.3 = 1.00s
+    const mapping2 = mapPlayheadToSlotTime(10.5, offsets, configsMap);
+    expect(mapping2.slotIndex).toBe(6);
+    expect(mapping2.localClipTime).toBe(1.0);
+    expect(mapping2.isDramaticPause).toBe(false);
   });
 });

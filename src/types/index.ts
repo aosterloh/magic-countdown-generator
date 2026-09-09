@@ -6,6 +6,10 @@ export type ImageModelType =
   | 'imagen-3.0-fast-generate-001'
   | 'procedural-diegetic';
 
+export type VeoModelType =
+  | 'veo-3.1-fast-generate-preview'
+  | 'veo-3.1-generate-preview';
+
 export type AuthMode = 'ADC' | 'API_KEY';
 
 export interface SlotTemporalConfig {
@@ -17,25 +21,46 @@ export interface SlotTemporalConfig {
 
 export type VideoQualityMode = 'FAST_720P' | 'FULL_4K';
 
+export type UpscaleEngineType = 'LANCZOS_4K' | 'REAL_ESRGAN_4K' | 'FAST_720P';
+
+export interface VideoAnalysisResult {
+  score: number; // 1 to 10
+  hasCorrectNumber: boolean;
+  exactCharactersRead?: string; // Exact text characters visibly read from the frame
+  characterLocation?: string; // Location of the numeral in frame
+  numberVisibility: 'CLEAR_IN_FINAL_FRAMES' | 'ALWAYS_VISIBLE' | 'MISSING' | 'DISTORTED';
+  timingVerdict: 'PERFECT_REVEAL' | 'APPEARED_TOO_EARLY' | 'NO_NUMBER' | 'DISTORTED';
+  critique: string;
+  suggestedPromptFix?: string | null;
+  frameUris?: string[]; // 4 extracted thumbnail URLs
+  analyzedAt?: string;
+}
+
 export interface CountdownSlot {
   index: number; // 10 down to 1
   diegeticNumber: number;
   sceneConcept: string;
   objectEmbedding?: string;
-  revealMechanism?: string; // How the number is revealed via motion / camera
-  imagePrompt: string;      // Scene framing planning for reveal (hidden/distant number)
-  videoPrompt?: string;     // Coordinated Veo 3 camera motion revealing the number
+  revealMechanism?: string; // How the camera transitions from Start to End
+  imagePrompt: string;      // Frame 1 (Start Image Prompt - Clean Establishing Shot)
+  startImagePrompt?: string;
+  endImagePrompt?: string;  // Frame N (End Image Prompt - Hero Shot with Number)
+  videoPrompt?: string;     // Coordinated Veo 3 camera motion connecting Start to End
 
   // Prompt Review State
   isPromptApproved: boolean;
   isPromptRecreating?: boolean;
 
-  // Image Generation State
-  currentImageUri: string | null;
-  historyImageUri: string | null; // N-1 rollback
+  // Image Generation State (Frame 1 Start & Frame N End)
+  currentImageUri: string | null;  // Frame 1 Start Image URI
+  startImageUri?: string | null;
+  endImageUri?: string | null;     // Frame N End Hero Image URI
+  historyImageUri: string | null;  // N-1 rollback
   isImageAccepted: boolean;
   isImageLoading: boolean;
+  isEndImageLoading?: boolean;
   imageError: string | null;
+  endImageError?: string | null;
 
   // Refinement Parameters
   customPromptOverride?: string;
@@ -48,6 +73,10 @@ export interface CountdownSlot {
   activeWorkerId?: number | null;
   videoError: string | null;
 
+  // Veo AI Video Quality Inspector State
+  videoAnalysis?: VideoAnalysisResult;
+  isAnalyzingVideo?: boolean;
+
   // Temporal Alignment
   temporalConfig: SlotTemporalConfig;
   processedVideoUri: string | null;
@@ -58,6 +87,7 @@ export interface ProjectConfig {
   themeContext: string;
   universalStyleAnchor: string;
   selectedModel: ImageModelType;
+  selectedVeoModel?: VeoModelType;
   authMode: AuthMode;
   gcpProject: string;
   gcpRegion: string;
@@ -67,6 +97,7 @@ export interface ProjectConfig {
 export interface JobSummary {
   jobId: string;
   customerName: string;
+  creatorLdap?: string;
   creativeTheme: string;
   currentStage: number;
   totalSlots: number;
@@ -77,17 +108,62 @@ export interface JobSummary {
   updatedAt: string;
 }
 
+export interface GroundingSource {
+  title: string;
+  url: string;
+}
+
+export interface GroundingMetadata {
+  searchQueries?: string[];
+  sources?: GroundingSource[];
+}
+
 export interface CountdownJobState {
   jobId: string;
   customerName: string;
+  creatorLdap?: string;
   creativeTheme: string;
   styleModifiers?: string;
   selectedModel?: ImageModelType;
+  selectedVeoModel?: VeoModelType;
   selectedVideoQuality?: VideoQualityMode;
   currentStage: number;
   slots: CountdownSlot[];
   masterVideoUri?: string;
+  extendedMasterVideoUri?: string;
+  groundingMetadata?: GroundingMetadata;
+  geminiModelUsed?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface VeoActiveWorker {
+  workerId: 1 | 2;
+  taskId: string;
+  jobId: string;
+  slotIndex: number;
+  model: string;
+  qualityMode: VideoQualityMode;
+  startedAt?: number;
+  elapsedSeconds: number;
+}
+
+export interface VeoQueuedItem {
+  position: number;
+  taskId: string;
+  jobId: string;
+  slotIndex: number;
+  model: string;
+  qualityMode: VideoQualityMode;
+  queuedAt: number;
+  waitingSeconds: number;
+}
+
+export interface VeoQueueStatus {
+  activeWorkers: VeoActiveWorker[];
+  activeCount: number;
+  maxWorkers: number;
+  queue: VeoQueuedItem[];
+  queueLength: number;
 }
 

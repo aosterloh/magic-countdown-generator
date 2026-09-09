@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magic Countdown Generator - EGM Phase E12 Specification (v10.0)</title>
+  <style>
+    :root {
+      --primary: #4285F4;
+      --secondary: #EA4335;
+      --accent: #FBBC04;
+      --success: #34A853;
+      --purple: #A855F7;
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --code-bg: #0b0f19;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 24px 100px 24px;
+    }
+
+    header {
+      border-bottom: 1px solid var(--surface-border);
+      padding-bottom: 24px;
+      margin-bottom: 40px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      margin-right: 8px;
+    }
+
+    .badge-blue { background: rgba(66, 133, 244, 0.15); color: #60a5fa; border: 1px solid rgba(66, 133, 244, 0.3); }
+    .badge-emerald { background: rgba(52, 168, 83, 0.15); color: #4ade80; border: 1px solid rgba(52, 168, 83, 0.3); }
+    .badge-purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-amber { background: rgba(251, 188, 4, 0.15); color: #fde047; border: 1px solid rgba(251, 188, 4, 0.3); }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      margin: 16px 0 8px 0;
+      letter-spacing: -0.02em;
+    }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 40px 0 16px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--surface-border);
+      color: #e2e8f0;
+    }
+
+    h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 24px 0 8px 0;
+      color: #93c5fd;
+    }
+
+    p, li {
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+
+    ul, ol {
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 16px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      color: #e2e8f0;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 6px;
+      color: #93c5fd;
+    }
+
+    .alert {
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+
+    .alert-info {
+      background: rgba(66, 133, 244, 0.1);
+      border: 1px solid rgba(66, 133, 244, 0.3);
+      color: #93c5fd;
+    }
+
+    .alert-success {
+      background: rgba(52, 168, 83, 0.1);
+      border: 1px solid rgba(52, 168, 83, 0.3);
+      color: #86efac;
+    }
+
+    .alert-purple {
+      background: rgba(168, 85, 247, 0.1);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      color: #d8b4fe;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 13px;
+    }
+
+    th, td {
+      border: 1px solid var(--surface-border);
+      padding: 10px 14px;
+      text-align: left;
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    tr:nth-child(even) {
+      background: rgba(255, 255, 255, 0.02);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <span class="badge badge-purple">Specification v10.0</span>
+        <span class="badge badge-blue">Veo 3.1 Exclusive</span>
+        <span class="badge badge-emerald">Gemini 3.7 Flash</span>
+        <span class="badge badge-amber">Production Ready</span>
+      </div>
+      <h1>Magic Countdown Generator Architecture & Specification (v10.0)</h1>
+      <p style="color: var(--text-muted); margin: 0; font-size: 14px;">
+        Comprehensive Technical Specification: Universal Narrative Arc, Hot-Reloaded Prompt Rules (<code>veo-prompt-rules.md</code>), Veo 3.1 Synthesis Engine, Single Unbroken One-Shot Mandate, and 30-Second Master Audio Alignment.
+      </p>
+    </header>
+
+    <div class="alert alert-purple">
+      <strong>✨ What's New in v10.0:</strong>
+      <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+        <li><strong>External Live Prompt Rules (<code>veo-prompt-rules.md</code>):</strong> Prompt engineering directives are now hot-reloaded dynamically from disk on every generation request, with historical versions preserved in <code>prompt-rules-history/</code>.</li>
+        <li><strong>Single Unbroken One-Shot Mandate:</strong> Every 4-second video clip is strictly generated as a single continuous camera take inside one environment (zero hard cuts, zero multi-scene montages).</li>
+        <li><strong>Veo 3.1 Exclusivity:</strong> Completely removed deprecated legacy models (<code>veo-002</code>, <code>veo-2.0</code>, <code>veo-3.0</code>) and locked pipelines exclusively to verified Veo 3.1 endpoints.</li>
+        <li><strong>Gemini 3.7 Flash 10-Scene Brainstormer:</strong> Instant brand discovery populates 10 editable 4-pillar scene ideas right in Step 1.</li>
+        <li><strong>Pure Pitch-Black Dramatic Pause ($9.20\text{s} \to 10.20\text{s}$):</strong> Interactive preview player and master video render pure solid black during the 1.0s silence gap before snapping to Shot #6 on the beat drop.</li>
+      </ul>
+    </div>
+
+    <h2>1. 🎬 Universal 4-Pillar 360° Brand Narrative Arc</h2>
+    <p>
+      To prevent monotony across all 10 shots, the system distributes scenes across 4 universal pillars tailored dynamically to any customer, brand, or sector (Food, Fashion, Tech, Sports, Aviation, Automotive, Luxury, Healthcare):
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Pillar</th>
+          <th>Shots</th>
+          <th>Narrative Focus</th>
+          <th>Diegetic Reveal Techniques (Final 1–2s)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>1. Genesis & Craft</strong></td>
+          <td>#10, #8, #1</td>
+          <td>Origins, raw ingredients, R&D design, precision artisanal crafting, kitchen prep, and flagship masterwork climax.</td>
+          <td>Microscope macro zoom, slicing dough/fabric, laser engraving, or heroic spotlight activation.</td>
+        </tr>
+        <tr>
+          <td><strong>2. Culture & People</strong></td>
+          <td>#9, #7</td>
+          <td>Warm campus life, espresso lounge chats, smiling colleagues over lunch, and collaborative glass whiteboard brainstorming.</td>
+          <td>Espresso cup moving cleanly out of frame, drawing with chalk marker on glass, or sliding clipboard.</td>
+        </tr>
+        <tr>
+          <td><strong>3. Customer Delight</strong></td>
+          <td>#5, #4, #3</td>
+          <td>High-performance dynamic in-use, personal smiling customer connections, and grand community or destination environments.</td>
+          <td>Digital telemetry dial zoom, lifting porcelain dishware, or rapid camera push-in to illuminated plaque.</td>
+        </tr>
+        <tr>
+          <td><strong>4. Global Logistics</strong></td>
+          <td>#6, #2</td>
+          <td>High-energy distribution fleets, automated dispatch docks at golden dusk, and executive command telemetry bridges.</td>
+          <td>Sliding cargo crate forward, flight deck throttle dial, or operations console display snapping on.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>2. 🚨 Core Prompt Directives for Google Veo 3.1</h2>
+    <div class="grid-2">
+      <div class="card">
+        <h3>1. Single Unbroken One-Shot Take</h3>
+        <p>Every 4-second clip is filmed in <strong>one single physical location</strong> with one continuous, fluid camera motion (dolly push-in, tracking arc, or optical zoom). Hard cuts, scene transitions, and multi-scene montages are strictly prohibited.</p>
+      </div>
+      <div class="card">
+        <h3>2. Environmental Diegesis (No Floating Text)</h3>
+        <p>The countdown numeral must physically exist as an organic object in the environment (stenciled on wood, glowing on digital displays, engraved in metal, drawn on glass). No post-production floating text overlays.</p>
+      </div>
+      <div class="card">
+        <h3>3. Positive-Only Action (0.0s–2.5s)</h3>
+        <p>Zero negative text prompts (no "without numbers" or "no text"). The first 2.5 seconds are described purely through positive atmospheric action, human expressions, and camera motion.</p>
+      </div>
+      <div class="card">
+        <h3>4. Centered Macro Reveal (2.5s–4.0s)</h3>
+        <p>In the final 1.5 seconds, the camera locks onto the physical numeral centered in the frame in razor-sharp focus. Must conclude with: <code>"Essential requirement: the physical numeral '[N]' must be clearly visible, centered, and unmistakably rendered in frame."</code></p>
+      </div>
+    </div>
+
+    <h2>3. ⏱️ 30-Second Master Timeline & Audio Alignment</h2>
+    <p>
+      The 30-second audio composition is engineered with an Act 1 build, a 1.0-second dramatic silence drop, and an explosive Act 2 beat drop:
+    </p>
+
+    <div class="card">
+      <pre><code>[0.00s ────────────── 9.20s]  Act 1: Shots #10, #9, #8, #7 (2.30s per shot)
+[9.20s ────────────── 10.20s] Dramatic Silence Pause: 1.00s Pure Solid Black Screen
+[10.20s ──────────── 30.00s]  Act 2: Shots #6, #5, #4, #3, #2, #1 (3.30s per shot)
+                              └── Beat Drop lands sharply on Shot #6 at exactly 10.20s!</code></pre>
+    </div>
+
+    <h2>4. ⚡ AI Synthesis Architecture</h2>
+    <div class="card">
+      <ul>
+        <li><strong>Prompt Intelligence:</strong> Gemini 3.7 Flash with Google Search Grounding dynamically reads <code>veo-prompt-rules.md</code> from disk live on every generation.</li>
+        <li><strong>Video Generation Engine:</strong> Google Veo 3.1 endpoints exclusively:
+          <ul>
+            <li><code>veo-3.1-fast-generate-preview</code>: 720p / 60fps Turbo Mode</li>
+            <li><code>veo-3.1-generate-preview</code>: 4K UHD / 60fps Master Quality</li>
+            <li><code>veo-3.1-lite-generate-preview</code>: Ultra-Fast Testing</li>
+          </ul>
+        </li>
+        <li><strong>Idempotent Bulk Video Generator:</strong> Filters to missing slots only, skipping already-generated clips and supporting continuous studio generation.</li>
+      </ul>
+    </div>
+
+    <h2>5. 🗂️ File Structure & History Archiving</h2>
+    <div class="card">
+      <pre><code>/Users/aosterloh/Dev/CountdownMaker/
+├── veo-prompt-rules.md                    # Primary prompt engineering rulebook (hot-reloaded live)
+├── prompt-rules-history/                  # Archived previous rulebook revisions
+│   ├── veo-prompt-rules-2026-08-29-v1-initial.md
+│   └── veo-prompt-rules-2026-08-29-v2-diegetic-countdown.md
+├── public/specifications/
+│   ├── spec_v9.html                       # EGM Phase E11 Specification
+│   └── spec_v10.html                      # EGM Phase E12 Specification (v10.0 - Current)
+├── server/
+│   └── index.ts                           # Express backend API & Veo 3.1 synthesis routes
+└── src/
+    ├── App.tsx                            # Main application controller
+    ├── components/
+    │   ├── Header.tsx                     # Top navigation & spec link
+    │   ├── ThemeInputForm.tsx             # Step 1 input & 10-Scene Brainstormer
+    │   ├── SequentialStudio.tsx           # Step 2 sequential studio & bulk video engine
+    │   └── WaveformTimeline.tsx           # Step 4 interactive timeline & black pause player
+    └── utils/
+        └── temporalMath.ts                # Timeline offset & playhead mapping math</code></pre>
+    </div>
+  </div>
+</body>
+</html>

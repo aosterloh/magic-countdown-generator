@@ -1,5 +1,5 @@
 import { SlotTemporalConfig, VideoQualityMode } from '../types';
-import { computeTemporalBounds } from './temporalMath';
+import { computeTemporalBounds, getDefaultTemporalConfigForSlot } from './temporalMath';
 
 export interface SingleSlotFFmpegArgs {
   slotIndex: number;
@@ -61,46 +61,130 @@ export function generateSingleSlotFFmpegArgs(
   return args;
 }
 
+export interface MasterConcatSlotInput {
+  index: number;
+  path: string;
+  temporalConfig?: SlotTemporalConfig;
+}
+
 export function generateMasterConcatFFmpegArgs(
-  processedSlotPaths: string[], // In chronological order (Slot 10 down to 1)
+  slotsOrPaths: (MasterConcatSlotInput | string)[],
   audioTrackPath: string,
-  totalDuration: number,
+  totalVideoDuration: number,
   outputMasterPath: string,
-  qualityMode: VideoQualityMode = 'FAST_720P'
+  qualityMode: VideoQualityMode = 'FAST_720P',
+  fullTargetDuration: number = 30.0
 ): string[] {
   const args: string[] = ['-y'];
 
-  // Inputs: All 10 video clips
-  for (const path of processedSlotPaths) {
-    args.push('-i', path);
+  // Normalize inputs to MasterConcatSlotInput
+  const slots: MasterConcatSlotInput[] = slotsOrPaths.map((item, i) => {
+    if (typeof item === 'string') {
+      const idx = 10 - i;
+      return {
+        index: idx,
+        path: item,
+        temporalConfig: getDefaultTemporalConfigForSlot(idx),
+      };
+    }
+    const idx = item.index || (10 - i);
+    return {
+      index: idx,
+      path: item.path,
+      temporalConfig: item.temporalConfig || getDefaultTemporalConfigForSlot(idx),
+    };
+  });
+
+  // Add all input video files
+  for (const s of slots) {
+    args.push('-i', s.path);
   }
-  // Input: Audio track
+  // Add audio track as the last input
   args.push('-i', audioTrackPath);
 
-  const numClips = processedSlotPaths.length;
-  const videoConcatInputs = processedSlotPaths.map((_, i) => `[${i}:v]`).join('');
-  const filterComplexParts: string[] = [
-    `${videoConcatInputs}concat=n=${numClips}:v=1:a=0[vconcat]`,
-  ];
+  const numClips = slots.length;
+  const is4K = qualityMode === 'FULL_4K';
+  const resolution = is4K ? '3840x2160' : '1280x720';
+  const padResolution = is4K ? '3840:2160' : '1280:720';
 
-  // Audio handling: DEF-04 resolution
-  const audioInputIndex = numClips;
-  if (totalDuration >= 30.0) {
-    // Pad end with silence to match total video duration
+  // Correct FFmpeg filter syntax: scale with flags -> pad to fit -> unsharp (if 4K)
+  const scaleAndPad = is4K
+    ? `scale=3840:2160:force_original_aspect_ratio=decrease:flags=lanczos+accurate_rnd,pad=3840:2160:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.4`
+    : `scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2`;
+
+  const filterComplexParts: string[] = [];
+  const concatInputTags: string[] = [];
+
+  let accumulatedDuration = 0.0;
+  let pauseInserted = false;
+
+  for (let i = 0; i < slots.length; i++) {
+    const s = slots[i];
+    const mode = s.temporalConfig?.mode || 'TRUNCATE_FRONT';
+    const reqDur = s.temporalConfig?.targetDurationSeconds || (s.index >= 7 ? 2.300 : 3.300);
+    const bounds = computeTemporalBounds(mode, reqDur);
+
+    // Insert 1.0s dramatic pause between Act 1 (10-7) and Act 2 (6-1)
+    if (!pauseInserted && s.index <= 6 && slots.some((x) => x.index >= 7)) {
+      filterComplexParts.push(
+        `color=c=black:s=${resolution}:d=1.000:r=60[vpause]`
+      );
+      concatInputTags.push('[vpause]');
+      accumulatedDuration += 1.000;
+      pauseInserted = true;
+    }
+
+    if (mode === 'SPEED_UP') {
+      filterComplexParts.push(
+        `[${i}:v]setpts=${bounds.ptsFactor}*PTS,${scaleAndPad},fps=60,format=yuv420p,trim=duration=${bounds.duration.toFixed(3)},setpts=PTS-STARTPTS[v${i}]`
+      );
+    } else if (mode === 'TRUNCATE_FRONT') {
+      filterComplexParts.push(
+        `[${i}:v]trim=start=${bounds.trimStart.toFixed(3)}:duration=${bounds.duration.toFixed(3)},setpts=PTS-STARTPTS,${scaleAndPad},fps=60,format=yuv420p[v${i}]`
+      );
+    } else if (mode === 'TRUNCATE_BACK') {
+      filterComplexParts.push(
+        `[${i}:v]trim=start=0.000:duration=${bounds.duration.toFixed(3)},setpts=PTS-STARTPTS,${scaleAndPad},fps=60,format=yuv420p[v${i}]`
+      );
+    } else {
+      // PASSTHROUGH
+      filterComplexParts.push(
+        `[${i}:v]trim=start=0.000:duration=4.000,setpts=PTS-STARTPTS,${scaleAndPad},fps=60,format=yuv420p[v${i}]`
+      );
+    }
+
+    concatInputTags.push(`[v${i}]`);
+    accumulatedDuration += bounds.duration;
+  }
+
+  // Check if trailing duration is needed up to 30.0s
+  const remainingDuration = Math.max(0, Number((fullTargetDuration - accumulatedDuration).toFixed(3)));
+  if (remainingDuration > 0.05 && concatInputTags.length > 0) {
     filterComplexParts.push(
-      `[${audioInputIndex}:a]apad=whole_dur=${totalDuration.toFixed(3)}[aout]`
+      `color=c=black:s=${resolution}:d=${remainingDuration.toFixed(3)}:r=60[vblack]`
     );
-  } else {
-    // Trim to total video duration with 0.5s fade out
-    const fadeStart = Math.max(0, totalDuration - 0.5);
+    concatInputTags.push('[vblack]');
+  } else if (concatInputTags.length === 0) {
     filterComplexParts.push(
-      `[${audioInputIndex}:a]atrim=0:${totalDuration.toFixed(3)},afade=t=out:st=${fadeStart.toFixed(3)}:d=0.5[aout]`
+      `color=c=black:s=${resolution}:d=${fullTargetDuration.toFixed(3)}:r=60[vconcat]`
     );
   }
 
-  const preset = qualityMode === 'FULL_4K' ? 'medium' : 'ultrafast';
-  const crf = qualityMode === 'FULL_4K' ? '15' : '23';
-  const audioBitrate = qualityMode === 'FULL_4K' ? '320k' : '192k';
+  if (concatInputTags.length > 0) {
+    filterComplexParts.push(
+      `${concatInputTags.join('')}concat=n=${concatInputTags.length}:v=1:a=0[vconcat]`
+    );
+  }
+
+  // Audio track handling: Pad / trim audio track to exactly 30.00s
+  const audioInputIndex = numClips;
+  filterComplexParts.push(
+    `[${audioInputIndex}:a]apad=whole_dur=${fullTargetDuration.toFixed(3)},atrim=0:${fullTargetDuration.toFixed(3)}[aout]`
+  );
+
+  const preset = is4K ? 'slow' : 'ultrafast';
+  const crf = is4K ? '15' : '23';
+  const audioBitrate = is4K ? '320k' : '192k';
 
   args.push(
     '-filter_complex',
@@ -115,6 +199,17 @@ export function generateMasterConcatFFmpegArgs(
     preset,
     '-crf',
     crf,
+    '-pix_fmt',
+    'yuv420p'
+  );
+
+  if (is4K) {
+    args.push('-b:v', '45M', '-maxrate', '60M', '-bufsize', '90M');
+  }
+
+  args.push(
+    '-movflags',
+    '+faststart',
     '-c:a',
     'aac',
     '-b:a',

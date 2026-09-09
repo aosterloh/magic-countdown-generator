@@ -19,6 +19,7 @@ build/
 # Dynamic Output Media
 output/
 uploads/
+*.mp4
 
 # Logs
 logs

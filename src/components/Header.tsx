@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Key, Activity, Sun, Moon, Sparkles, ExternalLink, CheckCircle2, X, Terminal, RefreshCw, Image as ImageIcon, ShieldCheck, FolderOpen, Plus, HelpCircle } from 'lucide-react';
-import { ImageModelType, AuthMode, JobSummary } from '../types';
+import { Key, Activity, Sun, Moon, Sparkles, ExternalLink, CheckCircle2, X, Terminal, RefreshCw, Image as ImageIcon, ShieldCheck, FolderOpen, Plus, HelpCircle, Volume2, VolumeX, Film } from 'lucide-react';
+import { ImageModelType, VeoModelType, AuthMode, JobSummary } from '../types';
 import { getMediaUrl } from '../utils/media';
 import { ProjectsModal } from './ProjectsModal';
 import { HelpModal } from './HelpModal';
@@ -13,8 +13,12 @@ interface HeaderProps {
   onAuthModeChange: (mode: AuthMode) => void;
   selectedModel: ImageModelType;
   onModelChange: (model: ImageModelType) => void;
+  selectedVeoModel?: VeoModelType;
+  onVeoModelChange?: (model: VeoModelType) => void;
   isDarkMode: boolean;
-  onToggleTheme: () => void;
+  onToggleTheme: (e?: React.MouseEvent) => void;
+  soundEnabled?: boolean;
+  onToggleSound?: () => void;
   authUser?: { email: string; name: string } | null;
   onSignOut?: () => void;
   currentJobId: string | null;
@@ -24,7 +28,10 @@ interface HeaderProps {
   onSelectJob: (jobId: string) => void;
   onCreateNewJob: () => void;
   onDeleteJob: (jobId: string) => Promise<void>;
+  onBulkDeleteAllJobs?: () => Promise<void>;
   onRefreshJobs: () => void;
+  onOpenPromptGuide?: () => void;
+  hasCustomPromptGuide?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -34,8 +41,12 @@ export const Header: React.FC<HeaderProps> = ({
   onAuthModeChange,
   selectedModel,
   onModelChange,
+  selectedVeoModel = 'veo-3.1-fast-generate-preview',
+  onVeoModelChange,
   isDarkMode,
   onToggleTheme,
+  soundEnabled = true,
+  onToggleSound,
   authUser,
   onSignOut,
   currentJobId,
@@ -45,7 +56,10 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectJob,
   onCreateNewJob,
   onDeleteJob,
+  onBulkDeleteAllJobs,
   onRefreshJobs,
+  onOpenPromptGuide,
+  hasCustomPromptGuide = false,
 }) => {
   const [showProjectsModal, setShowProjectsModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -54,6 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [tempKey, setTempKey] = useState(apiKey);
   const [tempModel, setTempModel] = useState<ImageModelType>(selectedModel);
+  const [tempVeoModel, setTempVeoModel] = useState<VeoModelType>(selectedVeoModel);
 
   // Test Gemini API State
   const [isTestingApi, setIsTestingApi] = useState(false);
@@ -136,6 +151,19 @@ export const Header: React.FC<HeaderProps> = ({
     },
   };
 
+  const veoModelLabels: Record<VeoModelType, { name: string; desc: string; badge: string }> = {
+    'veo-3.1-fast-generate-preview': {
+      name: 'Veo 3.1 Fast (Preview)',
+      desc: 'Rapid high-throughput video generation for quick iterative previews',
+      badge: '720p Turbo',
+    },
+    'veo-3.1-generate-preview': {
+      name: 'Veo 3.1 Master (Preview)',
+      desc: 'Google DeepMind flagship video model for 4K UHD masters',
+      badge: '4K Flagship',
+    },
+  };
+
   const activeJob = jobs.find((j) => j.jobId === currentJobId);
   const activeCustomerName = activeJob?.customerName || 'Projects';
 
@@ -154,19 +182,50 @@ export const Header: React.FC<HeaderProps> = ({
             <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
               Magic Countdown Generator
             </h1>
+            <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Gemini 3.8 Flash &amp; Veo 3.1</span>
+            </span>
             <a
-              href="/specifications/spec_v9.html"
+              href="/specifications/spec_v12.html"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-50 dark:bg-blue-950 text-[#4285F4] hover:text-blue-700 dark:hover:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/60 flex items-center gap-1 transition-all shadow-sm"
-              title="Open EGM Specification HTML (v9.0)"
+              className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/60 flex items-center gap-1 transition-all shadow-sm"
+              title="Open EGM Complete Master Specification HTML (v12.0)"
             >
-              <span>EGM v9.0 Spec</span>
+              <span>EGM v12.0 Spec</span>
               <ExternalLink className="w-3 h-3" />
             </a>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={onOpenPromptGuide}
+                className={`px-2.5 py-0.5 text-xs font-bold rounded-full border flex items-center gap-1.5 transition-all shadow-sm ${
+                  hasCustomPromptGuide
+                    ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/60'
+                    : 'bg-blue-50 dark:bg-blue-950 text-[#4285F4] hover:text-blue-700 dark:hover:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/60'
+                }`}
+                title="Open and edit your personalized Veo 3 Prompt Engineering Guide"
+              >
+                <Film className={`w-3 h-3 ${hasCustomPromptGuide ? 'text-amber-500' : 'text-[#4285F4]'}`} />
+                <span>Veo 3 Prompt Guide</span>
+                {hasCustomPromptGuide ? (
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" title="Customized guidelines active" />
+                ) : null}
+              </button>
+              <a
+                href="/veo-prompt-rules.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                title="Open read-only HTML guide in new tab"
+              >
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            30-Second Cinematic Countdown Generator (Gemini Nano Banana & Veo 3)
+            30-Second Cinematic Countdown Generator (Powered by Gemini 3.8 Flash &amp; Veo 3.1)
           </p>
         </div>
       </div>
@@ -243,10 +302,24 @@ export const Header: React.FC<HeaderProps> = ({
           <span>Help</span>
         </button>
 
+        {/* Audio Chimes Sound Toggle */}
+        <button
+          type="button"
+          onClick={onToggleSound}
+          className={`p-2.5 rounded-xl border transition-all shadow-sm flex items-center gap-1.5 ${
+            soundEnabled
+              ? 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 text-[#4285F4]'
+              : 'border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
+          }`}
+          title={soundEnabled ? 'Progress Chimes: Sound Enabled (Click to mute)' : 'Progress Chimes: Muted (Click to enable)'}
+        >
+          {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+        </button>
+
         {/* Light / Dark Mode Toggle Button */}
         <button
           type="button"
-          onClick={onToggleTheme}
+          onClick={(e) => onToggleTheme(e)}
           className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm"
           title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
         >
@@ -264,6 +337,7 @@ export const Header: React.FC<HeaderProps> = ({
         onSelectJob={onSelectJob}
         onCreateNewJob={onCreateNewJob}
         onDeleteJob={onDeleteJob}
+        onBulkDeleteAllJobs={onBulkDeleteAllJobs}
         onRefreshJobs={onRefreshJobs}
       />
 
@@ -532,12 +606,12 @@ export const Header: React.FC<HeaderProps> = ({
                 </p>
               </div>
 
-              {/* Model Selector */}
+              {/* Image Model Selector */}
               <div className="space-y-2 pt-1">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                   Image Generation Model
                 </label>
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   {(Object.keys(modelLabels) as ImageModelType[]).map((mKey) => {
                     const mInfo = modelLabels[mKey];
                     const isSelected = tempModel === mKey;
@@ -573,6 +647,53 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               </div>
 
+              {/* Veo Video Model Selector */}
+              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
+                    Veo Video Generation Model
+                  </label>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                    Vertex AI & AI Studio
+                  </span>
+                </div>
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {(Object.keys(veoModelLabels) as VeoModelType[]).map((vKey) => {
+                    const vInfo = veoModelLabels[vKey];
+                    const isSelected = tempVeoModel === vKey;
+                    return (
+                      <div
+                        key={vKey}
+                        onClick={() => setTempVeoModel(vKey)}
+                        className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-500 ring-1 ring-purple-500'
+                            : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-900 dark:text-white">{vInfo.name}</span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                              {vInfo.badge}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{vInfo.desc}</p>
+                          <code className="text-[10px] text-purple-600 dark:text-purple-400 font-mono">{vKey}</code>
+                        </div>
+                        <input
+                          type="radio"
+                          name="veoModelSelection"
+                          checked={isSelected}
+                          onChange={() => setTempVeoModel(vKey)}
+                          className="accent-purple-600"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="flex justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
@@ -586,6 +707,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onClick={() => {
                     onApiKeyChange(tempKey);
                     onModelChange(tempModel);
+                    if (onVeoModelChange) onVeoModelChange(tempVeoModel);
                     setShowKeyModal(false);
                   }}
                   className="px-5 py-2.5 rounded-xl bg-[#4285F4] hover:bg-blue-600 text-xs font-bold text-white shadow-lg shadow-blue-500/20"

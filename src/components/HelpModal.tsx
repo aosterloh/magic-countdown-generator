@@ -42,43 +42,34 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
       icon: <Wand2 className="w-5 h-5 text-blue-500" />,
       color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30',
       description:
-        'Enter your customer brand name (e.g. Lufthansa Group, Adidas, Porsche) and industry setting. This anchors the visual style across all 10 scenes.',
+        'Enter your customer brand name (e.g. Lufthansa Group, Adidas, Bundesdruckerei) and industry setting, or choose from enterprise presets. This anchors the visual style across all 10 scenes.',
     },
     {
       num: 2,
       badge: 'Stage 2',
-      title: 'AI Diegetic Prompt Generation',
+      title: 'AI Diegetic Prompt Engineering',
       icon: <Layers className="w-5 h-5 text-sky-500" />,
       color: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30',
       description:
-        'Gemini AI creates 10 coordinated prompts. Each countdown number (10 down to 1) is physically embedded into real world objects (etched metal, painted markings, illuminated gauges) with no fake floating graphic overlays.',
+        'Gemini AI creates 10 coordinated prompts with physical numeral integration (etched metal, illuminated gauges). Customize prompts inline or tune the system instructions via the Veo 3 Prompt Guide modal.',
     },
     {
       num: 3,
       badge: 'Stage 3',
-      title: 'Diegetic Starting Frames (Images)',
-      icon: <ImageIcon className="w-5 h-5 text-emerald-500" />,
-      color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+      title: 'Direct Veo 3.1 Text-to-Video Generation',
+      icon: <Film className="w-5 h-5 text-purple-500" />,
+      color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30',
       description:
-        'Generates 16:9 photorealistic starting images for each shot using 2 parallel AI workers. You can accept, redo, or refine any shot with dual-image ingestion.',
+        'Google Veo 3.1 directly synthesizes 4.0s cinematic motion clips straight from prompts without intermediate starting images. Supports both Veo 3.1 Fast (Turbo) and Veo 3.1 Quality with 1-click bulk generation.',
     },
     {
       num: 4,
       badge: 'Stage 4',
-      title: 'Veo 3 Image-to-Video Motion Synthesis',
-      icon: <Film className="w-5 h-5 text-purple-500" />,
-      color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30',
+      title: 'Master Concat, Extended Outro & Cloud Persistence',
+      icon: <Download className="w-5 h-5 text-emerald-500" />,
+      color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
       description:
-        'Google Veo 3 takes each starting image as input and synthesizes 4.0s of smooth cinematic camera motion (e.g. push-in zoom, orbital sweep, obstacle reveal) to unveil the diegetic number in motion.',
-    },
-    {
-      num: 5,
-      badge: 'Stage 5',
-      title: 'Master Concat & Audio Sync Timeline',
-      icon: <Download className="w-5 h-5 text-amber-500" />,
-      color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30',
-      description:
-        'Preview all 10 clips on the interactive waveform timeline. Export a seamless 30.0s broadcast master video with 1.0s crossfades and a synchronized soundtrack.',
+        'Preview on the interactive waveform timeline. Export either a standalone 30s Countdown Master or an Extended Master (+ Google I/O Outro) with a 2-second crossfade transition. All master files are permanently saved to GCS.',
     },
   ];
 
@@ -96,7 +87,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                 How Magic Countdown Generator Works
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                A 5-stage automated AI pipeline for 30-second cinematic brand countdowns.
+                A modernized 4-stage AI pipeline for 30-second cinematic brand countdowns.
               </p>
             </div>
           </div>
@@ -123,10 +114,10 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             </p>
           </div>
 
-          {/* 5 Stages Flow */}
+          {/* 4 Stages Flow */}
           <div className="space-y-3.5">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              The 5 Creative Stages
+              The 4 Creative Stages
             </h3>
 
             <div className="space-y-3">
@@ -164,20 +155,33 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             </div>
             <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-1.5 list-disc list-inside">
               <li>
-                <strong>Auto-Save:</strong> All prompts, images, videos, and master timelines are continuously saved to Google Cloud Storage.
+                <strong>Persistent Master Files:</strong> Master countdown videos are generated once and stored in GCS. Reopening any project instantly reloads the finished video without re-rendering.
               </li>
               <li>
-                <strong>Projects Popup:</strong> Click <strong>Projects</strong> in the top header anytime to open past projects, switch between clients, or delete old sessions.
+                <strong>Dual Master Choices:</strong> Export either a standalone 30s countdown master or the extended version with the Google I/O outro and 2s crossfade transition.
               </li>
               <li>
-                <strong>Deep Links:</strong> Share direct project links (e.g. <code className="text-[11px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">?job=...</code>) with colleagues to collaborate on the same countdown.
+                <strong>Customizable Prompt Rules:</strong> Click <strong>Veo 3 Prompt Guide</strong> in the header to view or customize your prompt synthesis directives.
+              </li>
+              <li>
+                <strong>Projects Popup:</strong> Click <strong>Projects</strong> in the header anytime to open past sessions, switch clients, or collaborate via deep links (<code className="text-[11px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">?job=...</code>).
               </li>
             </ul>
           </div>
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 sm:px-8 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="px-6 sm:px-8 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+          <a
+            href="/specifications/spec_v12.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+          >
+            <span>Open Complete Master Spec (v12.0)</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </a>
+
           <button
             type="button"
             onClick={onClose}

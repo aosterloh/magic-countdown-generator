@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Upload, Sparkles, RefreshCw } from 'lucide-react';
+import { X, Upload, Sparkles, RefreshCw, RotateCcw } from 'lucide-react';
 import { CountdownSlot } from '../types';
 import { getMediaUrl } from '../utils/media';
 
@@ -10,13 +10,16 @@ interface RefineModalProps {
   onRefine: (slotIndex: number, customPrompt: string, brandRefFile?: File) => Promise<void>;
 }
 
+const DEFAULT_INSTRUCTION_TEMPLATE = 'Fix image 1 by replacing ..... with the correct branded object in image 2';
+
 export const RefineModal: React.FC<RefineModalProps> = ({
   slot,
   brandName,
   onClose,
   onRefine,
 }) => {
-  const [customPrompt, setCustomPrompt] = useState(slot.imagePrompt);
+  const initialPrompt = slot.customPromptOverride || DEFAULT_INSTRUCTION_TEMPLATE;
+  const [customPrompt, setCustomPrompt] = useState(initialPrompt);
   const [brandRefFile, setBrandRefFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,6 +29,9 @@ export const RefineModal: React.FC<RefineModalProps> = ({
     if (file) {
       setBrandRefFile(file);
       setPreviewUrl(URL.createObjectURL(file));
+      if (!customPrompt.trim() || customPrompt === slot.imagePrompt) {
+        setCustomPrompt(DEFAULT_INSTRUCTION_TEMPLATE);
+      }
     }
   };
 
@@ -130,19 +136,30 @@ export const RefineModal: React.FC<RefineModalProps> = ({
           </div>
 
           {/* Manual Prompt Input */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Custom Prompt & Diegetic Number Instructions
-            </label>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-200">
+                Replacement & Refinement Instructions (Sent to Gemini Nano Banana)
+              </label>
+              <button
+                type="button"
+                onClick={() => setCustomPrompt(DEFAULT_INSTRUCTION_TEMPLATE)}
+                className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-medium transition-colors"
+                title="Reset to default instruction template"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset Template</span>
+              </button>
+            </div>
             <textarea
               rows={3}
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-slate-100 font-mono focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-              placeholder={`Describe the scene and how number "${slot.index}" is physically embedded...`}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-slate-100 font-mono focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 leading-relaxed"
+              placeholder="Fix image 1 by replacing ..... with the correct branded object in image 2"
             />
-            <p className="text-[11px] text-slate-500 mt-1">
-              Ensure number "{slot.index}" remains an authentic physical element inside the environment.
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              💡 Replace <code className="text-cyan-300 bg-slate-800 px-1 py-0.5 rounded">.....</code> with the specific item in Image 1 you want replaced (e.g. <em>"padel ball package"</em>, <em>"unbranded tennis racket"</em>, <em>"shoes"</em>).
             </p>
           </div>
 

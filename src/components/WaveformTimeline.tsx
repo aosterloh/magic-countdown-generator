@@ -222,29 +222,44 @@ export const WaveformTimeline: React.FC<WaveformTimelineProps> = ({
             </div>
           </div>
 
-          {/* 10 Colored Video Clip Blocks on Multi-Track Timeline */}
+          {/* 10 Colored Video Clip Blocks on Multi-Track Timeline (With Dramatic Pause Gap) */}
           <div className="relative h-14 w-full rounded-xl bg-slate-950 border border-slate-800 flex overflow-hidden p-1 gap-1">
-            {offsets.map((offset) => {
-              const widthPct = (offset.duration / totalDuration) * 100;
+            {offsets.map((offset, idx) => {
+              const maxDur = Math.max(30.0, totalDuration);
+              const widthPct = (offset.duration / maxDur) * 100;
               const isSelected = selectedSlotIndex === offset.slotIndex;
               const isActiveInPlayback = activeMapping.slotIndex === offset.slotIndex;
+              const prevOffset = idx > 0 ? offsets[idx - 1] : null;
+              const gapBefore = prevOffset ? offset.startTime - prevOffset.endTime : 0;
+              const gapPct = gapBefore > 0.05 ? (gapBefore / maxDur) * 100 : 0;
 
               return (
-                <div
-                  key={offset.slotIndex}
-                  onClick={() => setSelectedSlotIndex(offset.slotIndex)}
-                  style={{ width: `${widthPct}%` }}
-                  className={`h-full rounded-lg border flex flex-col justify-center items-center px-1 cursor-pointer transition-all ${
-                    slotColors[offset.slotIndex]
-                  } ${
-                    isSelected ? 'ring-2 ring-cyan-400 scale-[0.98]' : 'hover:brightness-125'
-                  } ${isActiveInPlayback ? 'brightness-150' : ''}`}
-                >
-                  <span className="font-mono font-bold text-xs">#{offset.slotIndex}</span>
-                  <span className="text-[10px] opacity-80 font-mono">
-                    {offset.duration.toFixed(1)}s
-                  </span>
-                </div>
+                <React.Fragment key={offset.slotIndex}>
+                  {gapPct > 0 && (
+                    <div
+                      style={{ width: `${gapPct}%` }}
+                      className="h-full rounded-lg border border-dashed border-slate-700 bg-slate-900/80 flex flex-col justify-center items-center px-1 text-center"
+                      title="1.0s Dramatic Silence / Drop Pause"
+                    >
+                      <span className="text-[9px] font-mono font-bold text-slate-300">PAUSE</span>
+                      <span className="text-[8px] font-mono text-slate-500">1.0s</span>
+                    </div>
+                  )}
+                  <div
+                    onClick={() => setSelectedSlotIndex(offset.slotIndex)}
+                    style={{ width: `${widthPct}%` }}
+                    className={`h-full rounded-lg border flex flex-col justify-center items-center px-1 cursor-pointer transition-all ${
+                      slotColors[offset.slotIndex]
+                    } ${
+                      isSelected ? 'ring-2 ring-cyan-400 scale-[0.98]' : 'hover:brightness-125'
+                    } ${isActiveInPlayback ? 'brightness-150' : ''}`}
+                  >
+                    <span className="font-mono font-bold text-xs">#{offset.slotIndex}</span>
+                    <span className="text-[10px] opacity-80 font-mono">
+                      {offset.duration.toFixed(1)}s
+                    </span>
+                  </div>
+                </React.Fragment>
               );
             })}
           </div>
@@ -330,8 +345,11 @@ export const WaveformTimeline: React.FC<WaveformTimelineProps> = ({
           <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
             Master Scrubbing Player
           </span>
-          <div className="aspect-video w-full rounded-xl bg-slate-950 border border-slate-800 overflow-hidden relative shadow-lg flex items-center justify-center">
-            {activeSlot?.rawVideoUri ? (
+          <div className="aspect-video w-full rounded-xl bg-black border border-slate-800 overflow-hidden relative shadow-lg flex items-center justify-center">
+            {activeMapping.isDramaticPause ? (
+              // Pure Solid Black Screen during Dramatic Pause (9.20s -> 10.20s)
+              <div className="w-full h-full bg-black flex items-center justify-center" />
+            ) : activeSlot?.rawVideoUri ? (
               <video
                 ref={masterVideoRef}
                 src={getMediaUrl(activeSlot.rawVideoUri)}
@@ -349,9 +367,11 @@ export const WaveformTimeline: React.FC<WaveformTimelineProps> = ({
               <div className="text-xs text-slate-500">Generate videos to preview master</div>
             )}
 
-            <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/75 backdrop-blur-sm text-[10px] font-mono text-cyan-400 border border-slate-800">
-              Active: Shot #{activeMapping.slotIndex} ({activeMapping.localClipTime.toFixed(1)}s)
-            </div>
+            {!activeMapping.isDramaticPause && activeMapping.slotIndex > 0 && (
+              <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/75 backdrop-blur-sm text-[10px] font-mono text-cyan-400 border border-slate-800">
+                Active: Shot #{activeMapping.slotIndex} ({activeMapping.localClipTime.toFixed(1)}s)
+              </div>
+            )}
           </div>
           <p className="text-[11px] text-slate-500 leading-relaxed">
             As you scrub or play the master audio waveform, this viewport dynamically displays the exact synchronized clip and frame for the active timeline position.

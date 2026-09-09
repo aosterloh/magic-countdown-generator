@@ -5,7 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    host: '127.0.0.1',
+    host: true,
+    allowedHosts: true,
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:3001',
@@ -20,6 +21,14 @@ export default defineConfig({
         changeOrigin: true,
       },
       '/countdown': {
+        target: 'http://127.0.0.1:3001',
+        changeOrigin: true,
+      },
+      '/veo-prompt-rules': {
+        target: 'http://127.0.0.1:3001',
+        changeOrigin: true,
+      },
+      '/veo-prompt-guide': {
         target: 'http://127.0.0.1:3001',
         changeOrigin: true,
       },

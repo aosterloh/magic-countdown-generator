@@ -35,6 +35,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/specifications ./specifications
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/veo-prompt-guide.md ./veo-prompt-guide.md
 
 # Ensure dynamic media directories exist
 RUN mkdir -p /app/output /app/uploads /app/public/countdown

@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magic Countdown Generator — Complete Master Specification (v12.0)</title>
+  <style>
+    :root {
+      --primary: #4285F4;
+      --secondary: #EA4335;
+      --accent: #FBBC04;
+      --success: #34A853;
+      --purple: #A855F7;
+      --cyan: #06B6D4;
+      --bg: #0b0f19;
+      --surface: #131d31;
+      --surface-border: #22324e;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --code-bg: #070a12;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 48px 28px 120px 28px;
+    }
+
+    header {
+      border-bottom: 1px solid var(--surface-border);
+      padding-bottom: 32px;
+      margin-bottom: 48px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      margin-right: 8px;
+      margin-bottom: 6px;
+    }
+
+    .badge-blue { background: rgba(66, 133, 244, 0.15); color: #60a5fa; border: 1px solid rgba(66, 133, 244, 0.3); }
+    .badge-emerald { background: rgba(52, 168, 83, 0.15); color: #4ade80; border: 1px solid rgba(52, 168, 83, 0.3); }
+    .badge-purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-amber { background: rgba(251, 188, 4, 0.15); color: #fde047; border: 1px solid rgba(251, 188, 4, 0.3); }
+    .badge-cyan { background: rgba(6, 182, 212, 0.15); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.3); }
+
+    h1 {
+      font-size: 34px;
+      font-weight: 900;
+      margin: 20px 0 10px 0;
+      letter-spacing: -0.03em;
+      color: #fff;
+    }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 800;
+      margin: 48px 0 20px 0;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--surface-border);
+      color: #93c5fd;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 28px 0 12px 0;
+      color: #c084fc;
+    }
+
+    h4 {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 16px 0 8px 0;
+      color: #fde047;
+    }
+
+    p, li {
+      color: #cbd5e1;
+      font-size: 14.5px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+      margin: 12px 0;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 13.5px;
+      background: var(--surface);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--surface-border);
+    }
+
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--surface-border);
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.04);
+      color: #93c5fd;
+      font-weight: 700;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .card-highlight {
+      background: rgba(66, 133, 244, 0.06);
+      border-color: rgba(66, 133, 244, 0.3);
+    }
+
+    .alert {
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+
+    .alert-rose {
+      background: rgba(234, 67, 53, 0.1);
+      border: 1px solid rgba(234, 67, 53, 0.3);
+      color: #fca5a5;
+    }
+
+    .alert-amber {
+      background: rgba(251, 188, 4, 0.1);
+      border: 1px solid rgba(251, 188, 4, 0.3);
+      color: #fde047;
+    }
+
+    .alert-emerald {
+      background: rgba(52, 168, 83, 0.1);
+      border: 1px solid rgba(52, 168, 83, 0.3);
+      color: #86efac;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 18px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12.5px;
+      color: #e2e8f0;
+      line-height: 1.55;
+      margin: 16px 0;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 6px;
+      color: #93c5fd;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <span class="badge badge-purple">Complete System Spec</span>
+        <span class="badge badge-cyan">v12.0 Direct Text-to-Video</span>
+        <span class="badge badge-emerald">Extended Outro Edition</span>
+        <span class="badge badge-blue">Google Cloud Run</span>
+      </div>
+      <h1>Magic Countdown Generator — Comprehensive Technical & Business Specification</h1>
+      <p style="color: var(--text-muted); margin: 0; font-size: 15px;">
+        End-to-End Architectural Blueprint, Direct Veo 3.1 Text-to-Video Engine, Dual Master Outro Transitions, GCS State Persistence, and 4K Cinema Export.
+      </p>
+    </header>
+
+    <!-- SECTION 1: EXECUTIVE SUMMARY & SYSTEM OVERVIEW -->
+    <h2>1. 🎯 Executive Summary & Purpose</h2>
+    <div class="card card-highlight">
+      <p>
+        The <strong>Magic Countdown Generator</strong> is an enterprise generative video application designed to produce bespoke, photorealistic <strong>30-second cinematic countdown videos</strong> (counting sequentially backwards from <strong>10 down to 1</strong>).
+      </p>
+      <p>
+        The system tailors scenes dynamically to any customer, brand identity, or enterprise domain (e.g. Bundesdruckerei, Lufthansa Group, Infineon, Adidas, Porsche). Every countdown numeral is <strong>diegetic</strong>—physically fabricated inside the actual filmed environment (laser-etched identity chips, cockpit dials, stadium architecture, industrial machinery) with zero synthetic 2D overlay badges.
+      </p>
+      <p>
+        <strong>v12.0 Modernization:</strong> The pipeline has transitioned from legacy multi-frame image-to-video synthesis to <strong>Direct Veo 3.1 Text-to-Video</strong> synthesis. Users can export either the standalone 30.0s master or an <strong>Extended Master (+ Google I/O Outro)</strong> featuring an automated 2-second crossfade transition and cloud persistence.
+      </p>
+    </div>
+
+    <!-- SECTION 2: AUDIO ARCHITECTURE & DRAMATIC TIMING -->
+    <h2>2. 🎵 The 30-Second Audio Track & Dramatic Structure</h2>
+    <div class="card">
+      <p>
+        Every generated countdown is anchored to the master soundtrack: <code>public/countdown/countdown_track.mp3</code> (Duration: <strong>30.000s</strong> @ 44.1kHz stereo). The timeline features a classical Hollywood trailer structure with a dramatic blackout pause:
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Phase / Act</th>
+            <th>Timeline Range</th>
+            <th>Duration</th>
+            <th>Countdown Slots</th>
+            <th>Visual & Musical Behavior</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Act 1 (Build-Up)</strong></td>
+            <td><code>0.000s → 9.200s</code></td>
+            <td><strong>9.200s</strong></td>
+            <td><strong>Shots #10, #9, #8, #7</strong><br>(4 slots @ 2.300s each)</td>
+            <td>Rising rhythmic pulse, ticking clock, sub-bass riser. Fast-paced establishing sequences.</td>
+          </tr>
+          <tr>
+            <td><strong>Dramatic Silence Gap</strong><br>(The "Beat Drop Pause")</td>
+            <td><code>9.200s → 10.200s</code></td>
+            <td><strong>1.000s</strong></td>
+            <td><strong>Pure Black Screen</strong><br>(Zero slots / zero overlays)</td>
+            <td>Total musical dropout and audio silence. Video is 100% solid pitch black (<code>#000000</code>). Peak suspense.</td>
+          </tr>
+          <tr>
+            <td><strong>Act 2 (Beat Drop Climax)</strong></td>
+            <td><code>10.200s → 30.000s</code></td>
+            <td><strong>19.800s</strong></td>
+            <td><strong>Shots #6, #5, #4, #3, #2, #1</strong><br>(6 slots @ 3.300s each)</td>
+            <td>Explosive bass drop at 10.200s on Shot #6. Heavy orchestral synthesis, intense cinematic resolution reaching Shot #1 at 30.0s.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="alert alert-emerald">
+        <strong>Mathematical Exact Match:</strong><br>
+        <code>(4 shots × 2.300s) + 1.000s Dramatic Pause + (6 shots × 3.300s) = 9.200s + 1.000s + 19.800s = 30.000s Exact Duration.</code>
+      </div>
+    </div>
+
+    <!-- SECTION 3: TEMPORAL TRIMMING & TRANSFORMATION MATH -->
+    <h2>3. ⏱️ Temporal Math & Video Transformation Logic</h2>
+    <div class="card">
+      <p>
+        Google Veo 3.1 synthesizes raw video clips of exactly <strong>4.000 seconds</strong> (240 frames @ 60fps). To match the musical slot requirements (2.300s in Act 1, 3.300s in Act 2), each clip undergoes deterministic temporal trimming:
+      </p>
+
+      <h3>A. Temporal Transformation Modes</h3>
+      <ul>
+        <li>
+          <strong><code>TRUNCATE_FRONT</code> (Default & Standard):</strong> Trims the opening seconds of the video, preserving the final seconds where the camera pushes in and locks onto the physical numeral in sharp macro focus.<br>
+          <em>Formula:</em> <code>trimStart = 4.000 - targetDuration</code> (Act 1: trim 0.0s–1.7s, keep 1.700s–4.000s; Act 2: trim 0.0s–0.7s, keep 0.700s–4.000s).
+        </li>
+        <li>
+          <strong><code>TRUNCATE_BACK</code>:</strong> Preserves the beginning of the clip and trims the tail (ideal when the numeral reveal occurs upfront).<br>
+          <em>Formula:</em> <code>trimStart = 0.000, duration = targetDuration</code>.
+        </li>
+        <li>
+          <strong><code>SPEED_UP</code>:</strong> Compresses the entire 4.0s motion smoothly into the target slot duration.<br>
+          <em>Formula:</em> <code>setpts=(targetDuration / 4.000) * PTS</code>.
+        </li>
+      </ul>
+
+      <h3>B. Interactive Playhead Mapping Function (<code>mapPlayheadToSlotTime</code>)</h3>
+      <p>
+        When scrubbing the interactive 30-second waveform timeline in the UI, the global playhead time $T \in [0.0, 30.0]$ is translated in real-time into the active slot index, local video clip time, and dramatic silence state:
+      </p>
+      <pre><code>if (T >= 9.200 && T < 10.200) {
+  // Dramatic Pause: Render 100% Solid Black Screen, Zero Badge Overlays
+  return { slotIndex: 0, localClipTime: 0.0, isDramaticPause: true };
+} else if (T < 9.200) {
+  // Act 1: Slots #10 down to #7 (Duration = 2.300s per slot)
+  const slotIndex = 10 - Math.floor(T / 2.300);
+  const slotOffset = T % 2.300;
+  const localClipTime = (4.000 - 2.300) + slotOffset; // Starts at 1.700s in raw clip
+  return { slotIndex, localClipTime, isDramaticPause: false };
+} else {
+  // Act 2: Slots #6 down to #1 (Duration = 3.300s per slot)
+  const act2Time = T - 10.200;
+  const slotIndex = 6 - Math.floor(act2Time / 3.300);
+  const slotOffset = act2Time % 3.300;
+  const localClipTime = (4.000 - 3.300) + slotOffset; // Starts at 0.700s in raw clip
+  return { slotIndex: Math.max(1, slotIndex), localClipTime, isDramaticPause: false };
+}</code></pre>
+    </div>
+
+    <!-- SECTION 4: STREAMLINED STUDIO WORKFLOW -->
+    <h2>4. 🚀 Complete Step-by-Step Studio Workflow (v12.0)</h2>
+    <div class="card">
+      <div class="grid-2">
+        <div>
+          <h4>Stage 1: Customer Theme & Enterprise Presets</h4>
+          <p>
+            User specifies the brand name (e.g. <em>Bundesdruckerei</em>, <em>Lufthansa</em>) and industry domain, or selects from curated enterprise presets. Gemini Search Grounding automatically extracts authentic visual motifs.
+          </p>
+
+          <h4>Stage 2: AI Diegetic Prompt Engineering</h4>
+          <p>
+            Gemini 3.8 Flash synthesizes 10 synchronized countdown prompts. Prompts follow front-loaded number focus and macro-environmental embedding rules. Users can tune the live system instructions via the in-app <strong>Veo 3 Prompt Guide</strong> editor.
+          </p>
+        </div>
+
+        <div>
+          <h4>Stage 3: Direct Veo 3.1 Text-to-Video Engine</h4>
+          <p>
+            <strong>Zero intermediate starting images.</strong> Google Veo 3.1 directly generates 4.0s high-fidelity cinematic motion clips straight from prompts. Supports both <strong>Veo 3.1 Fast</strong> (Turbo) and <strong>Veo 3.1 Quality</strong> with 1-click concurrent bulk dispatch.
+          </p>
+
+          <h4>Stage 4: Master Concat, Extended Outro & Cloud Persistence</h4>
+          <p>
+            Preview on the interactive waveform timeline. Choose between exporting a standalone <strong>30s Countdown Master</strong> or an <strong>Extended Master (+ Google I/O Outro)</strong> with a 2-second crossfade transition. All master files are permanently saved to Google Cloud Storage.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 5: EXTENDED MASTER OUTRO TRANSITION -->
+    <h2>5. ✨ Dual Master Export & Extended Outro Transition Architecture</h2>
+    <div class="card">
+      <p>
+        Users can choose between two final deliverables directly from the bottom export banner:
+      </p>
+
+      <div class="grid-2">
+        <div class="card card-highlight">
+          <h4>🎬 30s Countdown Master</h4>
+          <p>
+            Concatenates the 10 temporally-trimmed countdown clips, inserts the 1.0s dramatic blackout pause at 9.20s, synchronizes the master soundtrack, and exports a broadcast-ready 30.0s 4K UHD video.
+          </p>
+        </div>
+
+        <div class="card card-highlight">
+          <h4>✨ Extended (+ Google I/O Outro)</h4>
+          <p>
+            Appends the keynote outro video (<code>google-io.mp4</code>, 93.2s) to the 30s master, creating a combined <strong>121.2-second 4K master presentation</strong> with an automated 2-second crossfade transition.
+          </p>
+        </div>
+      </div>
+
+      <h3>Automated 2-Second Transition & Audio Mix Pipeline</h3>
+      <ul>
+        <li><strong>Stream Normalization:</strong> Normalizes video timebases and framerates (<code>settb=AVTB,fps=60</code>) to eliminate FFmpeg timebase mismatch errors (code 234).</li>
+        <li><strong>Video Fade Out (Video 1):</strong> The 30s countdown master dissolves into black across the final 2.0s via <code>xfade=transition=fadeblack:duration=2.0:offset=28.0</code> before revealing the outro.</li>
+        <li><strong>Soundtrack Fade Out (Video 1):</strong> The countdown background music track fades smoothly to complete silence via <code>afade=t=out:st=28.0:d=2.0</code>.</li>
+        <li><strong>Full-Volume Outro Audio (Video 2):</strong> The Google I/O outro audio is delayed to start at 28.0s (<code>adelay=28000|28000</code>) and enters at <strong>100% full volume with zero fade-in</strong>, guaranteeing the speaker's voiceover is immediately crisp and audible.</li>
+        <li><strong>Normalized Mixing:</strong> Audio streams are blended cleanly via <code>amix=inputs=2:duration=longest:weights=1 1:normalize=0</code>.</li>
+      </ul>
+
+      <pre><code>ffmpeg -y \
+  -i /app/output/master_countdown_10shots_4k.mp4 \
+  -i /app/public/countdown/google-io.mp4 \
+  -filter_complex "
+    [0:v]settb=AVTB,fps=60[v0];
+    [1:v]settb=AVTB,fps=60[v1];
+    [v0][v1]xfade=transition=fadeblack:duration=2.00:offset=28.00[v];
+    [0:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,afade=t=out:st=28.00:d=2.00[a0];
+    [1:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,adelay=28000|28000[a1];
+    [a0][a1]amix=inputs=2:duration=longest:weights=1 1:normalize=0[a]
+  " \
+  -map "[v]" -map "[a]" \
+  -c:v libx264 -preset ultrafast -crf 18 -pix_fmt yuv420p \
+  -c:a aac -b:a 320k -movflags +faststart \
+  /app/output/countdown_extended_master_4k.mp4</code></pre>
+    </div>
+
+    <!-- SECTION 6: DATA PERSISTENCE & GCS STORAGE STRUCTURE -->
+    <h2>6. 🗄️ Google Cloud Storage Architecture & State Persistence</h2>
+    <div class="card">
+      <p>
+        All project metadata, prompt revisions, generated videos, master files, and extended versions are persisted to Google Cloud Storage (<code>gs://magic-countdown-generator-aosterloh-cs-muc/</code>) as the authoritative single source of truth:
+      </p>
+
+      <pre><code>gs://magic-countdown-generator-aosterloh-cs-muc/
+├── static/
+│   └── google-io.mp4                     # Shared 4K outro video asset
+└── jobs/
+    ├── Bundesdruckerei-V7ZJD/
+    │   ├── state.json                    # Full job state, prompts, masterVideoUri, extendedMasterVideoUri
+    │   ├── videos/
+    │   │   ├── slot_10_veo_fast_720p.mp4 # Veo 3.1 video generation
+    │   │   └── slot_9_veo_fast_720p.mp4
+    │   ├── master/
+    │   │   └── master_countdown_10shots_4k.mp4       # Persistent 30.0s 4K master
+    │   └── extended-master/
+    │       └── countdown_extended_master_4k.mp4      # Persistent 121.2s extended master
+    └── Lufthansa-YVW8F/
+        └── ...</code></pre>
+
+      <div class="alert alert-emerald">
+        <strong>Instant Project Reloading:</strong><br>
+        When reopening any existing project, <code>loadJobStateFromGcs(jobId)</code> automatically restores the already-rendered master video URIs. Users do not need to re-render the master file unless they explicitly choose to click <strong>🔄 Regenerate Master</strong>.
+      </div>
+    </div>
+
+    <!-- SECTION 7: VEO PROMPT GUIDE CUSTOMIZATION -->
+    <h2>7. 📝 Customizable Veo 3 Prompt Guide & Per-User Isolation</h2>
+    <div class="card">
+      <ul>
+        <li><strong>Per-User LocalStorage Isolation:</strong> Prompt engineering directives can be customized directly in the UI. Custom rules are saved in <code>localStorage</code> under <code>veo_custom_prompt_guide</code>, preventing any cross-user leakage.</li>
+        <li><strong>Header Indicator:</strong> An active indicator badge appears in the header whenever personalized rules are active.</li>
+        <li><strong>Payload Injection:</strong> Both prompt generation and prompt regeneration endpoints accept <code>customPromptRules</code> in the request payload, seamlessly applying user-specific directives during Gemini synthesis.</li>
+      </ul>
+    </div>
+
+    <!-- SECTION 8: AUTHENTICATION & SECURITY -->
+    <h2>8. 🔒 Security, Authentication & Domain Gate</h2>
+    <div class="card">
+      <ul>
+        <li><strong>Authorized Domains Gate:</strong> Access to video/prompt generation endpoints is strictly restricted to <code>@cloudspace.goog</code> and <code>@google.com</code> corporate identities.</li>
+        <li><strong>Google OAuth Token Validation:</strong> Client-side Google Sign-In passes Bearer ID tokens, verified server-side via Google's token verification API.</li>
+        <li><strong>Application Default Credentials (ADC):</strong> Seamless backend authentication with Google Vertex AI and Cloud Storage without exposing private keys.</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

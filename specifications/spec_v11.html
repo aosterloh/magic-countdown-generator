@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magic Countdown Generator - Complete Master Specification (v11.0)</title>
+  <style>
+    :root {
+      --primary: #4285F4;
+      --secondary: #EA4335;
+      --accent: #FBBC04;
+      --success: #34A853;
+      --purple: #A855F7;
+      --cyan: #06B6D4;
+      --bg: #0b0f19;
+      --surface: #131d31;
+      --surface-border: #22324e;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --code-bg: #070a12;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 48px 28px 120px 28px;
+    }
+
+    header {
+      border-bottom: 1px solid var(--surface-border);
+      padding-bottom: 32px;
+      margin-bottom: 48px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      margin-right: 8px;
+    }
+
+    .badge-blue { background: rgba(66, 133, 244, 0.15); color: #60a5fa; border: 1px solid rgba(66, 133, 244, 0.3); }
+    .badge-emerald { background: rgba(52, 168, 83, 0.15); color: #4ade80; border: 1px solid rgba(52, 168, 83, 0.3); }
+    .badge-purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-amber { background: rgba(251, 188, 4, 0.15); color: #fde047; border: 1px solid rgba(251, 188, 4, 0.3); }
+    .badge-cyan { background: rgba(6, 182, 212, 0.15); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.3); }
+
+    h1 {
+      font-size: 34px;
+      font-weight: 900;
+      margin: 20px 0 10px 0;
+      letter-spacing: -0.03em;
+      color: #fff;
+    }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 800;
+      margin: 48px 0 20px 0;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--surface-border);
+      color: #93c5fd;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 28px 0 12px 0;
+      color: #c084fc;
+    }
+
+    h4 {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 16px 0 8px 0;
+      color: #fde047;
+    }
+
+    p, li {
+      color: #cbd5e1;
+      font-size: 14.5px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+      margin: 12px 0;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 13.5px;
+      background: var(--surface);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--surface-border);
+    }
+
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--surface-border);
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.04);
+      color: #93c5fd;
+      font-weight: 700;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .card-highlight {
+      background: rgba(66, 133, 244, 0.06);
+      border-color: rgba(66, 133, 244, 0.3);
+    }
+
+    .alert {
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+
+    .alert-rose {
+      background: rgba(234, 67, 53, 0.1);
+      border: 1px solid rgba(234, 67, 53, 0.3);
+      color: #fca5a5;
+    }
+
+    .alert-amber {
+      background: rgba(251, 188, 4, 0.1);
+      border: 1px solid rgba(251, 188, 4, 0.3);
+      color: #fde047;
+    }
+
+    .alert-emerald {
+      background: rgba(52, 168, 83, 0.1);
+      border: 1px solid rgba(52, 168, 83, 0.3);
+      color: #86efac;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 18px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12.5px;
+      color: #e2e8f0;
+      line-height: 1.55;
+      margin: 16px 0;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 6px;
+      color: #93c5fd;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <span class="badge badge-purple">Complete System Spec</span>
+        <span class="badge badge-cyan">v11.0 Master Edition</span>
+        <span class="badge badge-emerald">Production Blueprint</span>
+        <span class="badge badge-blue">Google Cloud Run</span>
+      </div>
+      <h1>Magic Countdown Generator — Comprehensive Technical & Business Specification</h1>
+      <p style="color: var(--text-muted); margin: 0; font-size: 15px;">
+        End-to-End Architectural Blueprint, Temporal Synchronization Math, Multi-Tier AI Directives, Transition & Trimming Logic, and 4K Cinema Export.
+      </p>
+    </header>
+
+    <!-- SECTION 1: EXECUTIVE SUMMARY & SYSTEM OVERVIEW -->
+    <h2>1. 🎯 Executive Summary & Purpose</h2>
+    <div class="card card-highlight">
+      <p>
+        The <strong>Magic Countdown Generator</strong> is an enterprise generative video system designed to create bespoke, photorealistic <strong>30-second cinematic countdown videos</strong> (counting sequentially backwards from <strong>10 down to 1</strong>).
+      </p>
+      <p>
+        The generated videos are tailored dynamically to any customer, brand identity, or industry theme (e.g. Lufthansa, Infineon, Nike, BMW, SpaceX). The countdown numbers are <strong>diegetic</strong>—meaning they physically exist within the filmed environment (stenciled hangar bay markings, server rack LED units, illuminated cockpit tachometers, chronograph bezels) rather than being synthetic digital overlays.
+      </p>
+      <p>
+        The final master output is a seamless <strong>16:9 4K UHD video @ 60fps</strong> perfectly synchronized with a dramatic 30-second soundtrack (featuring a 1.0-second blackout pause before the bass drop), optimized for keynote openings, YouTube 4K uploads, Google Slides embeds, and 32:9 giant cinema displays.
+      </p>
+    </div>
+
+    <!-- SECTION 2: AUDIO ARCHITECTURE & DRAMATIC TIMING -->
+    <h2>2. 🎵 The 30-Second Audio Track & Dramatic Structure</h2>
+    <div class="card">
+      <p>
+        Every generated countdown is driven by a single fixed master soundtrack: <code>public/countdown/countdown_track.mp3</code> (Duration: <strong>30.000s</strong> @ 44.1kHz, 320 kbps stereo). The composition follows a classical Hollywood teaser-trailer structure split across two acts and a silence gap:
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Phase / Act</th>
+            <th>Timeline Range</th>
+            <th>Duration</th>
+            <th>Countdown Slots</th>
+            <th>Visual & Musical Behavior</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Act 1 (Build-Up)</strong></td>
+            <td><code>0.000s → 9.200s</code></td>
+            <td><strong>9.200s</strong></td>
+            <td><strong>Shots #10, #9, #8, #7</strong><br>(4 slots @ 2.300s each)</td>
+            <td>Rising rhythmic pulse, ticking clock, sub-bass riser. Fast-paced establishing sequences.</td>
+          </tr>
+          <tr>
+            <td><strong>Dramatic Silence Gap</strong><br>(The "Beat Drop Pause")</td>
+            <td><code>9.200s → 10.200s</code></td>
+            <td><strong>1.000s</strong></td>
+            <td><strong>Pure Black Screen</strong><br>(Zero slots / zero overlays)</td>
+            <td>Total musical dropout and audio silence. Video is 100% solid pitch black (<code>#000000</code>). Peak suspense.</td>
+          </tr>
+          <tr>
+            <td><strong>Act 2 (Beat Drop Climax)</strong></td>
+            <td><code>10.200s → 30.000s</code></td>
+            <td><strong>19.800s</strong></td>
+            <td><strong>Shots #6, #5, #4, #3, #2, #1</strong><br>(6 slots @ 3.300s each)</td>
+            <td>Explosive bass drop at 10.200s on Shot #6. Heavy orchestral synthesis, intense cinematic resolution reaching Shot #1 at 30.0s.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="alert alert-emerald">
+        <strong>Mathematical Verification of Duration:</strong><br>
+        <code>(4 shots × 2.300s) + 1.000s Dramatic Pause + (6 shots × 3.300s) = 9.200s + 1.000s + 19.800s = 30.000s Exact Match.</code>
+      </div>
+    </div>
+
+    <!-- SECTION 3: TEMPORAL TRIMMING & TRANSFORMATION MATH -->
+    <h2>3. ⏱️ Temporal Math & Video Transformation Logic</h2>
+    <div class="card">
+      <p>
+        Google Veo 3.1 generates raw video clips of exactly <strong>4.000 seconds</strong> (240 frames @ 60fps). Because Act 1 slots require <strong>2.300s</strong> and Act 2 slots require <strong>3.300s</strong>, each clip undergoes temporal transformation.
+      </p>
+
+      <h3>A. Temporal Transformation Modes</h3>
+      <ul>
+        <li>
+          <strong><code>TRUNCATE_FRONT</code> (Default & Standard):</strong> Trims the opening seconds of the video, keeping the end where the physical numeral is revealed in sharp macro focus.<br>
+          <em>Formula:</em> <code>trimStart = 4.000 - targetDuration</code> (Act 1: trim 0.0s–1.7s, keep 1.700s–4.000s; Act 2: trim 0.0s–0.7s, keep 0.700s–4.000s).
+        </li>
+        <li>
+          <strong><code>TRUNCATE_BACK</code>:</strong> Keeps the beginning of the shot and trims the end (useful if the number reveal was established upfront).<br>
+          <em>Formula:</em> <code>trimStart = 0.000, duration = targetDuration</code>.
+        </li>
+        <li>
+          <strong><code>SPEED_UP</code>:</strong> Compresses the entire 4.0s unbroken camera motion smoothly into the target slot duration.<br>
+          <em>Formula:</em> <code>setpts=(targetDuration / 4.000) * PTS</code> (Act 1 speed factor = 0.575x; Act 2 speed factor = 0.825x).
+        </li>
+        <li>
+          <strong><code>PASSTHROUGH</code>:</strong> Retains full 4.0s duration without speed change (used during solo slot previews).
+        </li>
+      </ul>
+
+      <h3>B. Interactive Playhead Mapping Function (<code>mapPlayheadToSlotTime</code>)</h3>
+      <p>
+        When the user scrubs the 30-second waveform timeline in the UI, the playhead time $T \in [0.0, 30.0]$ is translated in real-time into the exact active slot index, local video clip time, and dramatic silence state:
+      </p>
+      <pre><code>if (T >= 9.200 && T < 10.200) {
+  // Dramatic Pause: Render 100% Solid Black Screen, Zero Badge Overlays
+  return { slotIndex: 0, localClipTime: 0.0, isDramaticPause: true };
+} else if (T < 9.200) {
+  // Act 1: Slots #10 down to #7 (Duration = 2.300s per slot)
+  const slotIndex = 10 - Math.floor(T / 2.300);
+  const slotOffset = T % 2.300;
+  const localClipTime = (4.000 - 2.300) + slotOffset; // Starts at 1.700s in raw clip
+  return { slotIndex, localClipTime, isDramaticPause: false };
+} else {
+  // Act 2: Slots #6 down to #1 (Duration = 3.300s per slot)
+  const act2Time = T - 10.200;
+  const slotIndex = 6 - Math.floor(act2Time / 3.300);
+  const slotOffset = act2Time % 3.300;
+  const localClipTime = (4.000 - 3.300) + slotOffset; // Starts at 0.700s in raw clip
+  return { slotIndex: Math.max(1, slotIndex), localClipTime, isDramaticPause: false };
+}</code></pre>
+    </div>
+
+    <!-- SECTION 4: COMPLETE 5-STEP STUDIO WORKFLOW -->
+    <h2>4. 🚀 Complete Step-by-Step Studio Workflow</h2>
+    <div class="card">
+      <div class="grid-2">
+        <div>
+          <h4>Step 0: Customer Theme & AI Search Brainstormer</h4>
+          <p>
+            User inputs a brand name (e.g. <em>"Lufthansa"</em>, <em>"Infineon"</em>). Clicking <strong>🪄 Auto-Brainstorm 10 Scenes</strong> invokes <code>gemini-3.8-flash</code> (with <code>gemini-3.7-flash</code> fallback) with Google Search Grounding to research the company's manufacturing, aircraft, chips, or facilities, outputting 10 custom visual concepts mapped across 4 pillars. User can edit the brainstorm text freely.
+          </p>
+
+          <h4>Step 1: Diegetic Prompt Synthesis & Review</h4>
+          <p>
+            Generates 10 prompt sets based on <code>veo-prompt-guide.md</code>. Features the <strong>2.0s / 2.0s Rule</strong> (establishing motion followed by 25%-40% macro lock), strict single-instance numeral enforcement, and no-spawn directives. User can review in carousel, regenerate, or edit prompts inline.
+          </p>
+
+          <h4>Step 2: Start & End Visual Frame Synthesis</h4>
+          <p>
+            Synthesizes Frame 1 (Start Image) and Frame N (End Hero Reveal Image with embedded number) using Gemini Nano Banana / Imagen 3. User can upload brand logo reference files for image-to-image style anchoring.
+          </p>
+        </div>
+
+        <div>
+          <h4>Step 3: Veo 3.1 Text-to-Video Engine</h4>
+          <p>
+            Dispatches asynchronous video generation to Vertex AI / AI Studio Veo 3.1. Supports <strong>Veo 3.1 Fast</strong> (720p 60fps Turbo), <strong>Veo 3.1 Full</strong> (4K UHD Master), and <strong>Veo 3.1 Lite</strong>. Includes polling loop, retry fallbacks, and live status progress bars.
+          </p>
+
+          <h4>Step 4: Interactive Waveform Timeline</h4>
+          <p>
+            WebAudio / WaveSurfer.js timeline visualizer. Shows 30s audio waveform, slot boundaries, play/pause controls, beat drop indicator, and real-time black screen pause rendering between 9.20s and 10.20s.
+          </p>
+
+          <h4>Step 5: Master Concat & Dual 4K Upscale Export</h4>
+          <p>
+            User opens the Master Export modal and selects between <strong>Option 1 (Instant 4K Lanczos Master ~5-8s)</strong> or <strong>Option 2 (Real-ESRGAN AI Super-Resolution ~2-4m)</strong>. FFmpeg stitches the clips, inserts the black pause, mixes the 30s audio track, and outputs a 16:9 4K UHD MP4.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 5: VEO 3 PROMPT ENGINEERING & 2-PHASE TEMPORAL REVEAL -->
+    <h2>5. 🎬 Veo 3 Prompt Engineering & 2-Phase Temporal Reveal Architecture</h2>
+    <div class="card">
+      <p>
+        Prompt synthesis is dynamically driven by <code>veo-prompt-guide.md</code> (which hot-reloads live from disk on every generation request).
+      </p>
+
+      <h3>A. 2-Phase Temporal Action Architecture (Seconds 0–2 vs Seconds 2–4)</h3>
+      <ul>
+        <li><strong>Phase 1 (Seconds 0–2 • Establishing & Movement):</strong> Wide/medium tracking camera movement across authentic brand facility. Zero visible numerals or text in the initial view.</li>
+        <li><strong>Phase 2 (Seconds 2–4 • Macro Reveal):</strong> Camera smoothly pushes in, pans, or unmasks to lock onto the pre-existing physical numeral <code>'[N]'</code> centered in razor-sharp focus in the final seconds.</li>
+        <li><strong>Strict Word Budget:</strong> Prompts are kept between <strong>40–55 words</strong> to prevent token dilution.</li>
+      </ul>
+
+      <h3>B. Standard 2-Phase Prompt Sentence Structure (Under 55 Words)</h3>
+      <pre><code>Smooth continuous forward camera tracking through [authentic brand environment], establishing ambient movement with zero visible numerals; in seconds 2-4, camera executes a dynamic macro push-in locking directly onto the pre-existing physical numeral '[N]' [material & illumination] centered on [carrier surface] in razor-sharp focus, 35mm anamorphic lens, shallow depth of field, volumetric lighting, photorealistic 8K.</code></pre>
+
+      <h3>C. 🤖 Veo AI Quality Assistant (Gemini 3.8 Flash Multimodal Frame Inspector)</h3>
+      <ul>
+        <li><strong>4-Frame Extraction:</strong> FFmpeg automatically extracts 4 sequential keyframes ($t=0.5\text{s}, 1.5\text{s}, 2.5\text{s}, 3.5\text{s}$) upon video completion.</li>
+        <li><strong>Multimodal Inspection:</strong> Gemini 3.8 Flash (with 3.7 Flash fallback) grades numeral presence, checks reveal timing, detects duplicates/hallucinations, and gives a score (1–10).</li>
+        <li><strong>1-Click Self-Improvement:</strong> If a numeral is missing or distorted, the Assistant automatically crafts an optimized high-contrast prompt and provides a <strong>🪄 1-Click Apply & Regenerate</strong> action.</li>
+      </ul>
+    </div>
+
+    <!-- SECTION 6: MASTER 4K EXPORT & OPEN-SOURCE SUPER-RESOLUTION -->
+    <h2>6. 📺 4K Master Upscaling & YouTube/Slides Faststart Pipeline</h2>
+    <div class="card">
+      <p>
+        When exporting the final master video, users can choose between two open-source mastering pipelines:
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Mastering Engine</th>
+            <th>Processing Speed</th>
+            <th>Algorithm & Filter Chain</th>
+            <th>Output Format & Bitrate</th>
+            <th>Primary Use Case</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Option 1: Instant 4K Lanczos Master</strong><br><em>(Default / Recommended)</em></td>
+            <td><strong>~5–8 seconds</strong></td>
+            <td>Multi-pass mathematical Lanczos spatial scaling + adaptive unsharp mask:<br><code>scale=3840:2160:flags=lanczos+accurate_rnd,unsharp=5:5:0.8:5:5:0.4</code></td>
+            <td><strong>16:9 4K UHD</strong> (3840x2160) @ 60fps<br>45 Mbps H.264, AAC 320k, <code>-movflags +faststart</code></td>
+            <td>YouTube 4K uploads, Google Slides presentations, fast exports.</td>
+          </tr>
+          <tr>
+            <td><strong>Option 2: Real-ESRGAN AI Super-Resolution</strong></td>
+            <td><strong>~2–4 minutes</strong></td>
+            <td>Deep convolutional neural network (<code>realesrgan-x4plus</code>) frame extraction, AI restoration, and re-muxing.</td>
+            <td><strong>16:9 4K UHD</strong> (3840x2160) @ 60fps<br>Reconstructed micro-textures, metal grain, and crisp text.</td>
+            <td>Maximum photorealistic detail on 8-meter cinema screens and LED walls.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Master FFmpeg Assembly Command Structure</h3>
+      <pre><code>ffmpeg -y \
+  -i slot_10.mp4 -i slot_9.mp4 -i slot_8.mp4 -i slot_7.mp4 \
+  -i slot_6.mp4 -i slot_5.mp4 -i slot_4.mp4 -i slot_3.mp4 -i slot_2.mp4 -i slot_1.mp4 \
+  -i public/countdown/countdown_track.mp3 \
+  -filter_complex "
+    [0:v]trim=start=1.700:duration=2.300,setpts=PTS-STARTPTS,scale=3840:2160:force_original_aspect_ratio=decrease:flags=lanczos+accurate_rnd,pad=3840:2160:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.4,fps=60,format=yuv420p[v0];
+    [1:v]trim=start=1.700:duration=2.300,setpts=PTS-STARTPTS,scale=3840:2160:force_original_aspect_ratio=decrease:flags=lanczos+accurate_rnd,pad=3840:2160:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.4,fps=60,format=yuv420p[v1];
+    [2:v]trim=start=1.700:duration=2.300,setpts=PTS-STARTPTS,scale=3840:2160:force_original_aspect_ratio=decrease:flags=lanczos+accurate_rnd,pad=3840:2160:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.4,fps=60,format=yuv420p[v2];
+    [3:v]trim=start=1.700:duration=2.300,setpts=PTS-STARTPTS,scale=3840:2160:force_original_aspect_ratio=decrease:flags=lanczos+accurate_rnd,pad=3840:2160:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.4,fps=60,format=yuv420p[v3];
+    color=c=black:s=3840x2160:d=1.000:r=60[vpause];
+    [4:v]trim=start=0.700:duration=3.300,setpts=PTS-STARTPTS,scale=3840:2160:force_original_aspect_ratio=decrease:flags=lanczos+accurate_rnd,pad=3840:2160:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.4,fps=60,format=yuv420p[v4];
+    [5:v]trim=start=0.700:duration=3.300,setpts=PTS-STARTPTS,scale=3840:2160:force_original_aspect_ratio=decrease:flags=lanczos+accurate_rnd,pad=3840:2160:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.4,fps=60,format=yuv420p[v5];
+    [6:v]trim=start=0.700:duration=3.300,setpts=PTS-STARTPTS,scale=3840:2160:force_original_aspect_ratio=decrease:flags=lanczos+accurate_rnd,pad=3840:2160:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.4,fps=60,format=yuv420p[v6];
+    [7:v]trim=start=0.700:duration=3.300,setpts=PTS-STARTPTS,scale=3840:2160:force_original_aspect_ratio=decrease:flags=lanczos+accurate_rnd,pad=3840:2160:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.4,fps=60,format=yuv420p[v7];
+    [8:v]trim=start=0.700:duration=3.300,setpts=PTS-STARTPTS,scale=3840:2160:force_original_aspect_ratio=decrease:flags=lanczos+accurate_rnd,pad=3840:2160:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.4,fps=60,format=yuv420p[v8];
+    [9:v]trim=start=0.700:duration=3.300,setpts=PTS-STARTPTS,scale=3840:2160:force_original_aspect_ratio=decrease:flags=lanczos+accurate_rnd,pad=3840:2160:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.4,fps=60,format=yuv420p[v9];
+    [v0][v1][v2][v3][vpause][v4][v5][v6][v7][v8][v9]concat=n=11:v=1:a=0[vconcat];
+    [10:a]apad=whole_dur=30.000,atrim=0:30.000[aout]
+  " \
+  -map "[vconcat]" -map "[aout]" \
+  -c:v libx264 -preset slow -crf 15 -pix_fmt yuv420p -b:v 45M -maxrate 60M -bufsize 90M \
+  -movflags +faststart -c:a aac -b:a 320k -shortest \
+  output/master_countdown_10shots_4k.mp4</code></pre>
+    </div>
+
+    <!-- SECTION 7: DATA PERSISTENCE & GCS STORAGE STRUCTURE -->
+    <h2>7. 🗄️ Google Cloud Storage Architecture & Deletion Lifecycle</h2>
+    <div class="card">
+      <p>
+        All project metadata, prompt revisions, generated images, video clips, and master renders are persisted to Google Cloud Storage (<code>gs://[BUCKET]/jobs/${jobId}/</code>) as the authoritative single source of truth:
+      </p>
+
+      <pre><code>gs://[GCS_BUCKET]/
+├── jobs/
+│   ├── Lufthansa-YVW8F/
+│   │   ├── state.json                 # Complete project state, prompts, slot configs, timestamps
+│   │   ├── images/
+│   │   │   ├── slot_10_start.png      # Frame 1 Start establishing shot
+│   │   │   └── slot_10_end.png        # Frame N Hero reveal shot
+│   │   ├── videos/
+│   │   │   ├── slot_10_raw.mp4        # Raw 4.0s Veo 3.1 generation
+│   │   │   └── slot_10_processed.mp4  # 2.3s or 3.3s temporally transformed clip
+│   │   ├── master/
+│   │   │   └── master_countdown_10shots_4k.mp4  # Assembled 30.0s 4K master video
+│   │   └── uploads/
+│   │       └── logo_reference.png     # Custom uploaded brand assets
+│   └── Infineon-TR92X/
+│       └── ...</code></pre>
+
+      <div class="alert alert-rose">
+        <strong>Project Deletion Guarantee:</strong><br>
+        When a user deletes a single project (or executes "Delete All Projects"), <code>deleteJobFromGcs(jobId)</code> permanently deletes all objects with prefix <code>jobs/${jobId}/</code> (including all images, raw videos, processed clips, and master renders) as well as unlinking any cached files in <code>public/output/</code>. Zero orphaned storage remains.
+      </div>
+    </div>
+
+    <!-- SECTION 8: AUTHENTICATION & DOMAIN SECURITY -->
+    <h2>8. 🔒 Security, Authentication & Domain Gate</h2>
+    <div class="card">
+      <ul>
+        <li><strong>Authorized Domains Gate:</strong> Access to video/prompt generation endpoints is strictly restricted to <code>@cloudspace.goog</code> and <code>@google.com</code> corporate identities.</li>
+        <li><strong>Google OAuth Token Validation:</strong> Client-side Google Sign-In passes Bearer ID tokens, verified server-side via Google's token verification API.</li>
+        <li><strong>Application Default Credentials (ADC):</strong> Seamless backend authentication with Google Vertex AI and Cloud Storage without exposing private keys.</li>
+        <li><strong>Environment Fallback:</strong> Supports Google AI Studio API keys (<code>GEMINI_API_KEY</code>) for local testing and container development.</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>
