@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Key, Activity, Sun, Moon, Sparkles, ExternalLink, CheckCircle2, X, Terminal, RefreshCw, Image as ImageIcon, ShieldCheck, FolderOpen, Plus, HelpCircle, Volume2, VolumeX, Film } from 'lucide-react';
+import { Key, Activity, Sun, Moon, Sparkles, ExternalLink, CheckCircle2, X, Terminal, RefreshCw, Image as ImageIcon, ShieldCheck, FolderOpen, Plus, HelpCircle, Volume2, VolumeX, Film, Play } from 'lucide-react';
 import { ImageModelType, VeoModelType, AuthMode, JobSummary } from '../types';
 import { getMediaUrl } from '../utils/media';
 import { ProjectsModal } from './ProjectsModal';
@@ -301,6 +301,19 @@ export const Header: React.FC<HeaderProps> = ({
           <HelpCircle className="w-4 h-4 text-[#4285F4] group-hover:scale-110 transition-transform" />
           <span>Help</span>
         </button>
+
+        {/* Demo Presentation Link */}
+        <a
+          href="https://docs.google.com/presentation/d/1UiozkVzzAuUBGM9DnBwH7w1YXW5Bg4TGWKG_LLCrozE/present?resourcekey=0-DtBmf2QuW69Mh66-ZLXlYA&slide=id.p"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold text-xs shadow-sm transition-all active:scale-95 group"
+          title="Open Google Slides Demo Presentation"
+        >
+          <Play className="w-3.5 h-3.5 fill-[#EA4335] text-[#EA4335] group-hover:scale-110 transition-transform" />
+          <span>Demo</span>
+          <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200" />
+        </a>
 
         {/* Audio Chimes Sound Toggle */}
         <button
