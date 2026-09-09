@@ -6,3 +6,5 @@ uploads
 .DS_Store
 *.log
 public/countdown/google-io.mp4
+*.mp4
+*.mp3
