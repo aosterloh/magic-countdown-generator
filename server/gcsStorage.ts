@@ -253,6 +253,14 @@ export async function ensureStaticAsset(
 ): Promise<string> {
   const localFullPath = path.join(process.cwd(), localRelativePath);
 
+  const getContentType = (filename: string): string => {
+    if (filename.endsWith('.mp3')) return 'audio/mpeg';
+    if (filename.endsWith('.mp4')) return 'video/mp4';
+    if (filename.endsWith('.png')) return 'image/png';
+    if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) return 'image/jpeg';
+    return 'application/octet-stream';
+  };
+
   // If local file exists, check if it needs to be uploaded/synced to GCS static/
   if (fs.existsSync(localFullPath)) {
     try {
@@ -263,7 +271,7 @@ export async function ensureStaticAsset(
         console.log(`[GCS_STORAGE] Uploading static asset ${staticFilename} to gs://${bucket.name}/static/...`);
         await bucket.upload(localFullPath, {
           destination: `static/${staticFilename}`,
-          contentType: 'video/mp4',
+          contentType: getContentType(staticFilename),
           resumable: false,
         });
         console.log(`[GCS_STORAGE] Static asset ${staticFilename} uploaded successfully.`);
@@ -274,14 +282,10 @@ export async function ensureStaticAsset(
     return localFullPath;
   }
 
-  // Fallback: If not in local repo directory, check local container cache or download from GCS static/
-  const cachedDir = path.join(process.cwd(), 'public', 'output');
-  if (!fs.existsSync(cachedDir)) {
-    fs.mkdirSync(cachedDir, { recursive: true });
-  }
-  const cachedPath = path.join(cachedDir, staticFilename);
-  if (fs.existsSync(cachedPath)) {
-    return cachedPath;
+  // Fallback: If not in local repo directory, download directly from GCS static/ into target location
+  const parentDir = path.dirname(localFullPath);
+  if (!fs.existsSync(parentDir)) {
+    fs.mkdirSync(parentDir, { recursive: true });
   }
 
   try {
@@ -289,12 +293,23 @@ export async function ensureStaticAsset(
     const gcsFile = bucket.file(`static/${staticFilename}`);
     const [exists] = await gcsFile.exists();
     if (exists) {
-      console.log(`[GCS_STORAGE] Downloading static/${staticFilename} from GCS into cache...`);
-      await gcsFile.download({ destination: cachedPath });
-      return cachedPath;
+      console.log(`[GCS_STORAGE] Downloading static/${staticFilename} from GCS into ${localRelativePath}...`);
+      await gcsFile.download({ destination: localFullPath });
+      console.log(`[GCS_STORAGE] Static asset ${staticFilename} successfully downloaded to ${localFullPath}`);
+      return localFullPath;
     }
   } catch (err: any) {
     console.warn(`[GCS_STORAGE] Could not download static asset ${staticFilename} from GCS:`, err.message);
+  }
+
+  // Secondary fallback: check cache dir
+  const cachedDir = path.join(process.cwd(), 'public', 'output');
+  if (!fs.existsSync(cachedDir)) {
+    fs.mkdirSync(cachedDir, { recursive: true });
+  }
+  const cachedPath = path.join(cachedDir, staticFilename);
+  if (fs.existsSync(cachedPath)) {
+    return cachedPath;
   }
 
   return localFullPath;

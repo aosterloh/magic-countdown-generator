@@ -2732,6 +2732,7 @@ app.post('/api/export-master', requireCloudspaceDomain, async (req, res) => {
     const is4K = effectiveEngine === 'LANCZOS_4K' || effectiveEngine === 'REAL_ESRGAN_4K';
     const outputFilename = `master_countdown_${availableSlots.length}shots_${is4K ? '4k' : '720p'}_${Date.now()}.mp4`;
     const masterOutputPath = path.join(OUTPUT_DIR, outputFilename);
+    await ensureStaticAsset('countdown_track.mp3', 'public/countdown/countdown_track.mp3');
 
     let totalVideoDuration = 0;
     for (const s of availableSlots) {
@@ -2967,6 +2968,11 @@ app.get('*', (req, res, next) => {
   return res.status(404).send('Page not found');
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`⚡ CountdownMaker Server running on http://localhost:${PORT}`);
+  try {
+    await ensureStaticAsset('countdown_track.mp3', 'public/countdown/countdown_track.mp3');
+  } catch (err: any) {
+    console.warn('[STARTUP] Failed to ensure countdown_track.mp3:', err.message);
+  }
 });
