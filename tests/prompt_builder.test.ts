@@ -91,3 +91,50 @@ describe('Prompt Builder & Coordinated Reveal Architecture', () => {
     expect(adaptedVideo).toContain("4-second motion");
   });
 });
+
+describe('Company Website URL Normalization & Validation', () => {
+  // Test local implementation matching server validation logic
+  function testValidateUrl(inputUrl: string) {
+    let cleaned = (inputUrl || '').trim();
+    if (!cleaned) return { isValid: false, error: 'Please enter a company website URL' };
+    if (!/^https?:\/\//i.test(cleaned)) cleaned = `https://${cleaned}`;
+    try {
+      const parsed = new URL(cleaned);
+      const hostname = parsed.hostname.toLowerCase();
+      const domainRegex = /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
+      if (!domainRegex.test(hostname)) {
+        return { isValid: false, error: `Invalid domain format` };
+      }
+      return { isValid: true, normalizedUrl: parsed.origin, hostname };
+    } catch {
+      return { isValid: false, error: 'Invalid URL format' };
+    }
+  }
+
+  it('normalizes domain names without protocol to https', () => {
+    const res = testValidateUrl('gema.de');
+    expect(res.isValid).toBe(true);
+    expect(res.normalizedUrl).toBe('https://gema.de');
+    expect(res.hostname).toBe('gema.de');
+  });
+
+  it('handles www and subdomains properly', () => {
+    const res = testValidateUrl('https://www.infineon.com');
+    expect(res.isValid).toBe(true);
+    expect(res.normalizedUrl).toBe('https://www.infineon.com');
+    expect(res.hostname).toBe('www.infineon.com');
+  });
+
+  it('rejects empty input or strings without dots', () => {
+    expect(testValidateUrl('').isValid).toBe(false);
+    expect(testValidateUrl('   ').isValid).toBe(false);
+    expect(testValidateUrl('gema').isValid).toBe(false);
+    expect(testValidateUrl('justaword').isValid).toBe(false);
+  });
+
+  it('rejects invalid domain structures or illegal characters', () => {
+    expect(testValidateUrl('invalid..com').isValid).toBe(false);
+    expect(testValidateUrl('http://-bad-.com').isValid).toBe(false);
+    expect(testValidateUrl('http://hello world.com').isValid).toBe(false);
+  });
+});

@@ -115,6 +115,7 @@ export const App: React.FC = () => {
   // Multi-step Workflow State (1 to 5)
   const [currentStage, setCurrentStage] = useState<number>(1);
   const [brandName, setBrandName] = useState<string>('');
+  const [companyUrl, setCompanyUrl] = useState<string>('');
   const [themeContext, setThemeContext] = useState<string>('');
   const [styleModifiers, setStyleModifiers] = useState<string>('');
   const [creatorLdap, setCreatorLdap] = useState<string>(() => {
@@ -248,6 +249,7 @@ export const App: React.FC = () => {
         const j = data.job;
         setCurrentJobId(j.jobId);
         setBrandName(j.customerName || '');
+        if ((j as any).companyUrl) setCompanyUrl((j as any).companyUrl);
         setThemeContext(j.creativeTheme || '');
         if (j.creatorLdap) setCreatorLdap(j.creatorLdap);
         if (j.styleModifiers !== undefined) setStyleModifiers(j.styleModifiers);
@@ -574,8 +576,9 @@ export const App: React.FC = () => {
   };
 
   // 1. Initialize Countdown with Single-Shot #10 Prompt (Stage 1 -> Stage 2)
-  const handleGeneratePrompts = async (brand: string, theme: string, styleAnchor: string, ldap: string) => {
+  const handleGeneratePrompts = async (brand: string, theme: string, styleAnchor: string, ldap: string, url?: string) => {
     setBrandName(brand);
+    if (url) setCompanyUrl(url);
     setThemeContext(theme);
     setCreatorLdap(ldap);
     setIsGeneratingPrompts(true);
@@ -622,6 +625,7 @@ export const App: React.FC = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             customerName: brand || 'Project',
+            companyUrl: url || companyUrl || undefined,
             creatorLdap: ldap,
             creativeTheme: theme,
             selectedModel,
@@ -633,9 +637,9 @@ export const App: React.FC = () => {
         const createData = await createRes.json();
         if (createData.success && createData.job) {
           setCurrentJobId(createData.job.jobId);
-          const url = new URL(window.location.href);
-          url.searchParams.set('job', createData.job.jobId);
-          window.history.replaceState({}, '', url.toString());
+          const urlObj = new URL(window.location.href);
+          urlObj.searchParams.set('job', createData.job.jobId);
+          window.history.replaceState({}, '', urlObj.toString());
           await fetchJobsList();
         }
       } catch (e) {
@@ -650,6 +654,7 @@ export const App: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           brandName: brand,
+          companyUrl: url || companyUrl || undefined,
           themeContext: theme,
           apiKey,
           customPromptRules: customPromptGuide || undefined,
@@ -1529,6 +1534,7 @@ export const App: React.FC = () => {
           onGeneratePrompts={handleGeneratePrompts}
           isLoading={isGeneratingPrompts}
           initialBrandName={brandName}
+          initialCompanyUrl={companyUrl}
           initialThemeContext={themeContext}
           initialCreatorLdap={creatorLdap}
         />
@@ -1577,7 +1583,7 @@ export const App: React.FC = () => {
             geminiModelUsed={geminiModelUsed}
             onAnalyzeVideo={handleAnalyzeVideoForSlot}
             onApplyPromptFixAndRegenerate={handleApplyAiPromptFixAndRegenerate}
-            showBulkVideoOption={isSlot10VideoReady}
+            showBulkVideoOption={true}
           />
         )}
 

@@ -3,6 +3,7 @@ import cors from 'cors';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import dns from 'dns';
 import { spawn, execSync } from 'child_process';
 import { EventEmitter } from 'events';
 import dotenv from 'dotenv';
@@ -937,33 +938,107 @@ app.get('/api/jobs/:jobId/assets/:subfolder/:filename', async (req, res) => {
 });
 
 // Helper: Dynamically loads Veo Prompt Rules from veo-prompt-rules.md or veo-prompt-guide.md
-// 0. Auto-Brainstorm 10 Visual Ideas for Brand (Gemini 3.8 Flash with 3.7 Flash fallback & Search Grounding)
+// Helper: Normalize & validate URL
+export function validateAndNormalizeUrl(inputUrl: string): { isValid: boolean; normalizedUrl?: string; hostname?: string; error?: string } {
+  let cleaned = (inputUrl || '').trim();
+  if (!cleaned) {
+    return { isValid: false, error: 'Please enter a company website URL (e.g. https://www.gema.de or gema.de).' };
+  }
+  // Auto-prepend https:// if no protocol is given
+  if (!/^https?:\/\//i.test(cleaned)) {
+    cleaned = `https://${cleaned}`;
+  }
+  try {
+    const parsed = new URL(cleaned);
+    const hostname = parsed.hostname.toLowerCase();
+    // Validate domain structure: must contain at least one dot and a valid TLD of at least 2 alpha chars
+    const domainRegex = /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
+    if (!domainRegex.test(hostname)) {
+      return { isValid: false, error: `"${hostname}" is not a valid domain format. Please enter a valid website URL (e.g. gema.de or https://www.gema.de).` };
+    }
+    return { isValid: true, normalizedUrl: parsed.origin, hostname };
+  } catch (err: any) {
+    return { isValid: false, error: 'Invalid URL format. Please enter a valid website URL.' };
+  }
+}
+
+async function verifyDomainResolves(hostname: string, fullUrl: string): Promise<{ ok: boolean; reason?: string }> {
+  try {
+    await dns.promises.lookup(hostname);
+    return { ok: true };
+  } catch (err: any) {
+    // Try alternate (with or without www)
+    try {
+      const alt = hostname.startsWith('www.') ? hostname.replace(/^www\./, '') : `www.${hostname}`;
+      await dns.promises.lookup(alt);
+      return { ok: true };
+    } catch {
+      // If DNS lookup fails, try a fast HTTP HEAD probe as fallback
+      try {
+        const probe = await fetch(fullUrl, { method: 'HEAD', signal: AbortSignal.timeout(3500) });
+        if (probe.status < 500) return { ok: true };
+      } catch {
+        // failed both
+      }
+      return { ok: false, reason: `The domain "${hostname}" could not be reached or resolved. Please check the URL.` };
+    }
+  }
+}
+
+// 0. Auto-Research 10 Domain-Authentic Visual Ideas via Company URL (Gemini 3.8 Flash + Google Search Grounding)
 app.post('/api/suggest-brand-ideas', requireCloudspaceDomain, async (req, res) => {
   try {
-    const { brandName, apiKey } = req.body;
-    if (!brandName || !brandName.trim()) {
-      return res.status(400).json({ error: 'brandName is required' });
+    const { companyUrl, brandName, apiKey } = req.body;
+    const input = (companyUrl || brandName || '').trim();
+    if (!input) {
+      return res.status(400).json({ error: 'Company website URL is required.' });
+    }
+
+    const validation = validateAndNormalizeUrl(input);
+    if (!validation.isValid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const normalizedUrl = validation.normalizedUrl!;
+    const hostname = validation.hostname!;
+
+    // Step A: Verify domain legitimacy
+    const resolveCheck = await verifyDomainResolves(hostname, normalizedUrl);
+    if (!resolveCheck.ok) {
+      return res.status(400).json({ error: resolveCheck.reason });
     }
 
     const key = apiKey || process.env.GEMINI_API_KEY;
 
-    addLog('INFO', 'GEMINI_AI', `Brainstorming 10 visual ideas for "${brandName}" via Gemini 3.8 Flash...`);
+    addLog('INFO', 'GEMINI_AI', `Researching domain "${normalizedUrl}" via Gemini 3.8 Flash with Google Search Grounding...`);
 
-    const promptText = `You are an elite brand creative director and visual film scout specializing in cutting-edge industrial and technological cinematography.
-Perform Google Search grounding to discover real-world products, specialized machinery, manufacturing lines, technical labs, security infrastructure, and mission-critical field operations for company/brand "${brandName}".
+    const promptText = `You are an elite brand creative director and visual film scout specializing in cutting-edge industrial, corporate, and technological cinematography for Google Veo 3.1.
+You are given the official corporate website URL: "${normalizedUrl}".
 
-STRICT RULE: Focus EXCLUSIVELY on the customer's authentic industry, specialized machinery, facilities, and technical workflows. DO NOT generate generic corporate office clichés (e.g. no cafeterias, no espresso lounges, no laughing around watercoolers, no generic office meeting rooms). Every single scene must feel authentic to what "${brandName}" specifically builds, operates, protects, or manufactures.
+Execute these tasks using Google Search grounding:
+1. Ground the official organization/company behind this URL. Identify its official name, country/headquarters, and a factual summary of its core business, services, products, and operational domain.
+CRITICAL ANTI-CONFUSION RULE: Focus strictly on what this specific organization actually does (e.g. if the domain is gema.de, it is the German music copyright & royalty society, NOT an industrial robotics or machinery brand).
 
-Using the 100% Industry 4-Pillar Narrative Architecture:
-- Pillar 1: Core Manufacturing Lines & High-Tech Hardware (e.g. robotic fabrication, laser etching/printing lines, micro-assembly, specialized presses)
-- Pillar 2: Specialized R&D, Testing, Calibration & Inspection Labs (e.g. optical/UV inspection stations, cleanroom testing chambers, biometric/cryptographic calibration, high-voltage test rigs)
-- Pillar 3: Real-World Technical Deployments & Specialized Field Touchpoints (e.g. border e-gates, specialized transport, telemetry kiosks, field engineers deploying solutions)
-- Pillar 4: Mission Control, Security Operations & Automated Infrastructure (e.g. sovereign cloud data centers, cryptographic HSM vaults, industrial dispatch bridges, automated robotics)
+2. Generate exactly 10 distinct, domain-authentic visual substrates and physical scene ideas for countdown numbers 10 down to 1 following the veo-prompt-guide rules:
+- Approved Substrates: High-visibility stencils (e.g. white paint on road cases, bright yellow on dark structural surfaces), high-luminance physical instrumentation (e.g. warm amber LED digital segments, illuminated analog VU meters, backlit tactile switches), dimensional raised signage (e.g. brushed brass on dark acoustic walnut, raised white acrylic on dark matte composite).
+- Strictly Banned: Low-contrast laser etchings, monochrome metal stamps, floating 2D digital overlays, synthetic HUD graphics, post-production CGI watermarks.
+- Authentic Environments: Strictly isolate the visual language to their actual domain (e.g. music copyright -> soundstages, recording consoles, flight cases, acoustic baffles; financial services -> trading floors, secure data centers; aviation -> cockpits, maintenance hangars; etc.).
 
-Provide a concise, numbered 10-shot creative visual ideas summary for "${brandName}".
-Format your response as exactly 10 numbered bullet lines (1. to 10.) that describe vibrant, diverse visual scenes.
-
-Return ONLY the 10 numbered lines.`;
+Provide your output strictly in this structured format:
+COMPANY_NAME: [Official Company Name]
+BUSINESS_SUMMARY: [1-2 sentences summarizing their core business and industry domain]
+SCENES:
+1. Numeral "10": [Visual substrate and authentic scene description]
+2. Numeral "9": [Visual substrate and authentic scene description]
+3. Numeral "8": [Visual substrate and authentic scene description]
+4. Numeral "7": [Visual substrate and authentic scene description]
+5. Numeral "6": [Visual substrate and authentic scene description]
+6. Numeral "5": [Visual substrate and authentic scene description]
+7. Numeral "4": [Visual substrate and authentic scene description]
+8. Numeral "3": [Visual substrate and authentic scene description]
+9. Numeral "2": [Visual substrate and authentic scene description]
+10. Numeral "1": [Visual substrate and authentic scene description]
+`;
 
     if (key) {
       const candidateModels = ['gemini-3.8-flash', 'gemini-3.7-flash'];
@@ -987,10 +1062,33 @@ Return ONLY the 10 numbered lines.`;
             const data = await geminiRes.json();
             const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
             if (text) {
+              let detectedBrand = '';
+              let businessSummary = '';
+              let visualIdeas = text;
+
+              const nameMatch = text.match(/COMPANY_NAME:\s*(.+)/i);
+              if (nameMatch) detectedBrand = nameMatch[1].trim();
+
+              const summaryMatch = text.match(/BUSINESS_SUMMARY:\s*(.+)/i);
+              if (summaryMatch) businessSummary = summaryMatch[1].trim();
+
+              const scenesMatch = text.match(/SCENES:([\s\S]+)/i);
+              if (scenesMatch) {
+                visualIdeas = scenesMatch[1].trim();
+              }
+
+              const fallbackBrand = hostname.replace(/^www\./, '').split('.')[0];
+              const brandDisplayName = detectedBrand || fallbackBrand.toUpperCase();
+
               return res.json({
                 success: true,
-                brandName,
-                visualIdeas: text,
+                companyUrl: normalizedUrl,
+                hostname,
+                brandName: brandDisplayName,
+                detectedBrandName: brandDisplayName,
+                businessSummary,
+                visualIdeas,
+                rawResponse: text,
                 model: m,
                 groundingMetadata: data.candidates?.[0]?.groundingMetadata || null,
               });
@@ -1003,20 +1101,25 @@ Return ONLY the 10 numbered lines.`;
     }
 
     // Fallback if API key unavailable
-    const fallbackIdeas = `1. Advanced R&D prototyping laboratory with precision laser optics for ${brandName}
-2. High-precision optical inspection and material calibration cleanroom laboratory
-3. Automated multi-axis robotic precision manufacturing and assembly line
-4. Glass-walled creative design studio with team collaborating on whiteboard
-5. Global automated distribution and logistics cargo terminal at dusk
-6. High-performance real-world field operation in scenic outdoor setting
-7. Customer experience center with client interacting with new product
-8. Large-scale sustainable infrastructure facility with green energy arrays
-9. Executive command operations bridge overlooking city skyline at twilight
-10. Flagship final presentation showcase under dramatic architectural lighting`;
+    const fallbackBrand = hostname.replace(/^www\./, '').split('.')[0].toUpperCase();
+    const fallbackIdeas = `1. Numeral "10": High-visibility white stencil on heavy-duty equipment flight case for ${fallbackBrand}
+2. Numeral "9": Illuminated warm amber digital LED segment display on precision control station
+3. Numeral "8": Dimensional brushed brass numerals mounted on dark acoustic architectural panel
+4. Numeral "7": Stark white high-contrast stencil on matte black technical transport case
+5. Numeral "6": High-luminance backlit physical readout on rack-mounted telemetry hardware
+6. Numeral "5": Raised white acrylic numeral on dark composite workstation console
+7. Numeral "4": Bright safety yellow stencil lettering on industrial equipment housing
+8. Numeral "3": Glowing numeric indicator on analog diagnostic calibration instrument
+9. Numeral "2": Crisp typography prominently displayed on primary operational surface
+10. Numeral "1": Large high-contrast hero numeral centered under directional key lighting`;
 
     return res.json({
       success: true,
-      brandName,
+      companyUrl: normalizedUrl,
+      hostname,
+      brandName: fallbackBrand,
+      detectedBrandName: fallbackBrand,
+      businessSummary: `Official website: ${normalizedUrl}`,
       visualIdeas: fallbackIdeas,
       model: 'procedural-fallback',
     });
@@ -1028,21 +1131,21 @@ Return ONLY the 10 numbered lines.`;
 // 1. Generate Diegetic Prompts (Gemini 3.8 Flash with 3.7 Flash fallback via API Key or ADC)
 app.post('/api/generate-diegetic-prompts', requireCloudspaceDomain, async (req, res) => {
   try {
-    const { brandName = 'Porsche Motorsport', themeContext = 'Automotive telemetry laboratory', apiKey, authMode = 'ADC', customPromptRules } = req.body;
+    const { brandName = 'Porsche Motorsport', companyUrl, themeContext = 'Automotive telemetry laboratory', apiKey, authMode = 'ADC', customPromptRules } = req.body;
     const creds = await getAdcCredentials();
     const key = apiKey || process.env.GEMINI_API_KEY;
 
     const isCustom = typeof customPromptRules === 'string' && customPromptRules.trim().length > 0;
     const rules = isCustom ? customPromptRules.trim() : getVeoPromptRules();
 
-    addLog('INFO', 'GEMINI_AI', `Generating Diegetic Prompts with reveal strategy for brand "${brandName}" using ${isCustom ? 'User Custom Prompt Guide' : 'Default veo-prompt-guide.md'} via Gemini 3.8 Flash...`);
+    addLog('INFO', 'GEMINI_AI', `Generating Diegetic Prompts with reveal strategy for brand "${brandName}"${companyUrl ? ` (${companyUrl})` : ''} using ${isCustom ? 'User Custom Prompt Guide' : 'Default veo-prompt-guide.md'} via Gemini 3.8 Flash...`);
 
     const userIdeasSection = themeContext && themeContext.trim().length > 0
       ? `\n🚨 TOP PRIORITY VISUAL BLUEPRINT FROM USER (NON-NEGOTIABLE):\n"${themeContext.trim()}"\nYou MUST extract every specialized machine, technical facility, material, security mechanism, and operational process mentioned in these ideas and feature them prominently across the 10 scenes.\n`
       : '';
 
     const promptText = `You are an elite visual effects director, cinematographer, and generative video prompt director specializing in Google Veo 3.1.
-First, perform Google Search grounding to thoroughly research customer/brand "${brandName}":
+First, perform Google Search grounding to thoroughly research customer/brand "${brandName}"${companyUrl ? ` (Official Website URL: ${companyUrl})` : ''}:
 1. Their specialized physical products, hardware, chips, security documents, vehicles, or technical infrastructure.
 2. Their authentic industrial facilities, production lines, engineering laboratories, and cleanrooms.
 3. Their real-world field applications, end-user verification points, security touchpoints, or client operational environments.
@@ -1301,13 +1404,13 @@ Return ONLY a valid JSON array of 10 objects:
 // Re-create a single prompt using Gemini with previous shots context continuity
 app.post('/api/recreate-prompt', async (req, res) => {
   try {
-    const { diegeticNumber, brandName, themeContext, previousShots, customVisualIdea, apiKey, customPromptRules } = req.body;
+    const { diegeticNumber, brandName, companyUrl, themeContext, previousShots, customVisualIdea, apiKey, customPromptRules } = req.body;
     const key = apiKey || process.env.GEMINI_API_KEY;
 
     const isCustom = typeof customPromptRules === 'string' && customPromptRules.trim().length > 0;
     const rules = isCustom ? customPromptRules.trim() : getVeoPromptRules();
 
-    addLog('INFO', 'GEMINI_AI', `Re-creating 4.0s cinematic prompt for Shot #${diegeticNumber} (${brandName}${customVisualIdea ? ` • Custom Idea: "${customVisualIdea}"` : ''}) using ${isCustom ? 'User Custom Prompt Guide' : 'Default veo-prompt-guide.md'}...`);
+    addLog('INFO', 'GEMINI_AI', `Re-creating 4.0s cinematic prompt for Shot #${diegeticNumber} (${brandName}${companyUrl ? ` • ${companyUrl}` : ''}${customVisualIdea ? ` • Custom Idea: "${customVisualIdea}"` : ''}) using ${isCustom ? 'User Custom Prompt Guide' : 'Default veo-prompt-guide.md'}...`);
 
     let contextSection = '';
     if (previousShots && Array.isArray(previousShots) && previousShots.length > 0) {
@@ -1332,7 +1435,7 @@ ${summaryList}
     }
 
     const promptText = `You are an elite visual effects director, cinematographer, and generative video prompt engineer specializing in Google Veo 3.1.
-Generate a single, breathtaking 4-second cinematic video concept specifically for countdown Shot #${diegeticNumber} tailored for customer "${brandName}" and setting/theme "${themeContext}".
+Generate a single, breathtaking 4-second cinematic video concept specifically for countdown Shot #${diegeticNumber} tailored for customer "${brandName}"${companyUrl ? ` (Website URL: ${companyUrl})` : ''} and setting/theme "${themeContext}".
 
 STRICT RULE: The scene MUST focus 100% on customer "${brandName}"'s authentic industrial machinery, technical facilities, production lines, or specialized operational touchpoints. Absolutely NO generic corporate office, cafeteria, or espresso lounge clichés.
 
