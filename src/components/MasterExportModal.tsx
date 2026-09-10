@@ -200,7 +200,7 @@ export const MasterExportModal: React.FC<MasterExportModalProps> = ({
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 {activeTab === '30s' && exportUrl && (
                   <a
-                    href={exportUrl}
+                    href={`${exportUrl}${exportUrl.includes('?') ? '&' : '?'}download=1`}
                     download="countdown_30s_master_4k.mp4"
                     className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold shadow-lg shadow-cyan-600/20 transition-all active:scale-95"
                   >
@@ -211,7 +211,7 @@ export const MasterExportModal: React.FC<MasterExportModalProps> = ({
 
                 {activeTab === 'extended' && extendedMasterVideoUri && (
                   <a
-                    href={getMediaUrl(extendedMasterVideoUri)}
+                    href={`${getMediaUrl(extendedMasterVideoUri)}${getMediaUrl(extendedMasterVideoUri).includes('?') ? '&' : '?'}download=1`}
                     download="countdown_extended_master_google_io_4k.mp4"
                     className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-lg shadow-purple-600/20 transition-all active:scale-95"
                   >

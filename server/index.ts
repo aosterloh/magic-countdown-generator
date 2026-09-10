@@ -852,7 +852,7 @@ app.delete('/api/jobs/:jobId', requireCloudspaceDomain, async (req, res) => {
   }
 });
 
-// Stream or download a GCS media asset with native range support and local container caching
+// Stream or download a GCS media asset with native range support, windowed chunking (bypassing Cloud Run 32MB limit), and local container caching
 app.get('/api/jobs/:jobId/assets/:subfolder/:filename', async (req, res) => {
   try {
     const jobId = String(req.params.jobId);
@@ -860,16 +860,77 @@ app.get('/api/jobs/:jobId/assets/:subfolder/:filename', async (req, res) => {
     const filename = String(req.params.filename);
     const localPath = path.join(OUTPUT_DIR, filename);
 
-    if (fs.existsSync(localPath)) {
-      return res.sendFile(localPath);
+    let targetPath = localPath;
+    if (!fs.existsSync(targetPath)) {
+      const fetched = await ensureLocalAssetFile(`api/jobs/${jobId}/assets/${subfolder}/${filename}`, WORKSPACE_ROOT, OUTPUT_DIR);
+      if (fs.existsSync(fetched)) {
+        targetPath = fetched;
+      } else {
+        return res.status(404).json({ error: 'Asset not found in GCS' });
+      }
     }
 
-    const fetched = await ensureLocalAssetFile(`api/jobs/${jobId}/assets/${subfolder}/${filename}`, WORKSPACE_ROOT, OUTPUT_DIR);
-    if (fs.existsSync(fetched)) {
-      return res.sendFile(fetched);
+    const isVideo = /\.(mp4|webm|mov|mkv)$/i.test(filename);
+    if (isVideo) {
+      const stat = fs.statSync(targetPath);
+      const fileSize = stat.size;
+      const range = req.headers.range;
+      const isDownload = req.query.download === '1';
+
+      if (isDownload) {
+        // Direct download stream: omit Content-Length so Cloud Run uses chunked transfer encoding,
+        // preventing the 32MB payload limit from blocking large 4K downloads.
+        res.writeHead(200, {
+          'Content-Type': 'video/mp4',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+        });
+        const stream = fs.createReadStream(targetPath);
+        return stream.pipe(res);
+      }
+
+      // Safe chunk window size (8MB) to stay well below Cloud Run's 32MB single-response ceiling
+      const CHUNK_SIZE = 8 * 1024 * 1024;
+
+      if (range) {
+        const parts = range.replace(/bytes=/, '').split('-');
+        const start = parseInt(parts[0], 10);
+        const requestedEnd = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        // Cap response chunk to 8MB so Cloud Run never sees a Content-Length > 32MB
+        const end = Math.min(requestedEnd, start + CHUNK_SIZE - 1, fileSize - 1);
+        const chunkLength = end - start + 1;
+
+        res.writeHead(206, {
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunkLength,
+          'Content-Type': 'video/mp4',
+          'Cache-Control': 'public, max-age=3600',
+        });
+
+        const stream = fs.createReadStream(targetPath, { start, end });
+        return stream.pipe(res);
+      } else {
+        // When requested without a Range header by a video tag, serve the initial 8MB chunk as 206
+        // so media players can immediately buffer and start playback without hitting the 32MB limit.
+        if (fileSize > CHUNK_SIZE) {
+          const end = CHUNK_SIZE - 1;
+          res.writeHead(206, {
+            'Content-Range': `bytes 0-${end}/${fileSize}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': CHUNK_SIZE,
+            'Content-Type': 'video/mp4',
+            'Cache-Control': 'public, max-age=3600',
+          });
+          const stream = fs.createReadStream(targetPath, { start: 0, end });
+          return stream.pipe(res);
+        } else {
+          return res.sendFile(targetPath);
+        }
+      }
     }
 
-    res.status(404).json({ error: 'Asset not found in GCS' });
+    // For non-video files (images, JSON, audio under 1MB), standard sendFile works flawlessly
+    return res.sendFile(targetPath);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

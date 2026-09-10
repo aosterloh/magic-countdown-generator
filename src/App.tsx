@@ -23,7 +23,6 @@ import { SlotCard } from './components/SlotCard';
 import { WaveformTimeline } from './components/WaveformTimeline';
 import { RefineModal } from './components/RefineModal';
 import { MasterExportModal } from './components/MasterExportModal';
-import { VideoQualityModal } from './components/VideoQualityModal';
 import { GoogleAuthGate } from './components/GoogleAuthGate';
 import { PromptGuideModal } from './components/PromptGuideModal';
 import { CountdownSlot, ImageModelType, VeoModelType, AuthMode, SlotTemporalConfig, VideoQualityMode, UpscaleEngineType, JobSummary, VeoQueueStatus, GroundingMetadata } from './types';
@@ -172,7 +171,6 @@ export const App: React.FC = () => {
   // Modal States
   const [activeRefineSlot, setActiveRefineSlot] = useState<CountdownSlot | null>(null);
   const [previewVideoUri, setPreviewVideoUri] = useState<string | null>(null);
-  const [showQualityModal, setShowQualityModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [isExportingMaster, setIsExportingMaster] = useState(false);
   const [masterVideoUri, setMasterVideoUri] = useState<string | null>(null);
@@ -1728,19 +1726,6 @@ export const App: React.FC = () => {
           onRefine={handleRefineShot}
         />
       )}
-
-      {/* Video Quality Selection Modal */}
-      <VideoQualityModal
-        isOpen={showQualityModal}
-        onClose={() => setShowQualityModal(false)}
-        selectedQuality={selectedVideoQuality}
-        onConfirm={(quality) => {
-          setSelectedVideoQuality(quality);
-          setShowQualityModal(false);
-          setCurrentStage(4);
-          handleGenerateAllVideos(quality);
-        }}
-      />
 
       {/* Video Preview Modal */}
       {previewVideoUri && (
