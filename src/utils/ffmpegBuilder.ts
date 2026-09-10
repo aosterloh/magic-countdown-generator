@@ -104,13 +104,11 @@ export function generateMasterConcatFFmpegArgs(
 
   const numClips = slots.length;
   const is4K = qualityMode === 'FULL_4K';
-  const resolution = is4K ? '3840x2160' : '1280x720';
-  const padResolution = is4K ? '3840:2160' : '1280:720';
 
-  // Correct FFmpeg filter syntax: scale with flags -> pad to fit -> unsharp (if 4K)
-  const scaleAndPad = is4K
-    ? `scale=3840:2160:force_original_aspect_ratio=decrease:flags=lanczos+accurate_rnd,pad=3840:2160:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.4`
-    : `scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2`;
+  // Base normalization filter: Normalize each input clip to uniform 720p 60fps first.
+  // 4K Lanczos + Unsharp is applied AFTER concatenation to the single combined stream,
+  // preventing 10 simultaneous 4K frame buffers from exhausting container RAM.
+  const baseScaleAndPad = `scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2`;
 
   const filterComplexParts: string[] = [];
   const concatInputTags: string[] = [];
@@ -127,7 +125,7 @@ export function generateMasterConcatFFmpegArgs(
     // Insert 1.0s dramatic pause between Act 1 (10-7) and Act 2 (6-1)
     if (!pauseInserted && s.index <= 6 && slots.some((x) => x.index >= 7)) {
       filterComplexParts.push(
-        `color=c=black:s=${resolution}:d=1.000:r=60[vpause]`
+        `color=c=black:s=1280x720:d=1.000:r=60[vpause]`
       );
       concatInputTags.push('[vpause]');
       accumulatedDuration += 1.000;
@@ -136,20 +134,20 @@ export function generateMasterConcatFFmpegArgs(
 
     if (mode === 'SPEED_UP') {
       filterComplexParts.push(
-        `[${i}:v]setpts=${bounds.ptsFactor}*PTS,${scaleAndPad},fps=60,format=yuv420p,trim=duration=${bounds.duration.toFixed(3)},setpts=PTS-STARTPTS[v${i}]`
+        `[${i}:v]setpts=${bounds.ptsFactor}*PTS,${baseScaleAndPad},fps=60,format=yuv420p,trim=duration=${bounds.duration.toFixed(3)},setpts=PTS-STARTPTS[v${i}]`
       );
     } else if (mode === 'TRUNCATE_FRONT') {
       filterComplexParts.push(
-        `[${i}:v]trim=start=${bounds.trimStart.toFixed(3)}:duration=${bounds.duration.toFixed(3)},setpts=PTS-STARTPTS,${scaleAndPad},fps=60,format=yuv420p[v${i}]`
+        `[${i}:v]trim=start=${bounds.trimStart.toFixed(3)}:duration=${bounds.duration.toFixed(3)},setpts=PTS-STARTPTS,${baseScaleAndPad},fps=60,format=yuv420p[v${i}]`
       );
     } else if (mode === 'TRUNCATE_BACK') {
       filterComplexParts.push(
-        `[${i}:v]trim=start=0.000:duration=${bounds.duration.toFixed(3)},setpts=PTS-STARTPTS,${scaleAndPad},fps=60,format=yuv420p[v${i}]`
+        `[${i}:v]trim=start=0.000:duration=${bounds.duration.toFixed(3)},setpts=PTS-STARTPTS,${baseScaleAndPad},fps=60,format=yuv420p[v${i}]`
       );
     } else {
       // PASSTHROUGH
       filterComplexParts.push(
-        `[${i}:v]trim=start=0.000:duration=4.000,setpts=PTS-STARTPTS,${scaleAndPad},fps=60,format=yuv420p[v${i}]`
+        `[${i}:v]trim=start=0.000:duration=4.000,setpts=PTS-STARTPTS,${baseScaleAndPad},fps=60,format=yuv420p[v${i}]`
       );
     }
 
@@ -161,19 +159,33 @@ export function generateMasterConcatFFmpegArgs(
   const remainingDuration = Math.max(0, Number((fullTargetDuration - accumulatedDuration).toFixed(3)));
   if (remainingDuration > 0.05 && concatInputTags.length > 0) {
     filterComplexParts.push(
-      `color=c=black:s=${resolution}:d=${remainingDuration.toFixed(3)}:r=60[vblack]`
+      `color=c=black:s=1280x720:d=${remainingDuration.toFixed(3)}:r=60[vblack]`
     );
     concatInputTags.push('[vblack]');
   } else if (concatInputTags.length === 0) {
-    filterComplexParts.push(
-      `color=c=black:s=${resolution}:d=${fullTargetDuration.toFixed(3)}:r=60[vconcat]`
-    );
+    if (is4K) {
+      filterComplexParts.push(
+        `color=c=black:s=1280x720:d=${fullTargetDuration.toFixed(3)}:r=60[vbase]`,
+        `[vbase]scale=3840:2160:force_original_aspect_ratio=decrease:flags=lanczos+accurate_rnd,pad=3840:2160:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.4[vconcat]`
+      );
+    } else {
+      filterComplexParts.push(
+        `color=c=black:s=1280x720:d=${fullTargetDuration.toFixed(3)}:r=60[vconcat]`
+      );
+    }
   }
 
   if (concatInputTags.length > 0) {
-    filterComplexParts.push(
-      `${concatInputTags.join('')}concat=n=${concatInputTags.length}:v=1:a=0[vconcat]`
-    );
+    if (is4K) {
+      filterComplexParts.push(
+        `${concatInputTags.join('')}concat=n=${concatInputTags.length}:v=1:a=0[vbase]`,
+        `[vbase]scale=3840:2160:force_original_aspect_ratio=decrease:flags=lanczos+accurate_rnd,pad=3840:2160:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.4[vconcat]`
+      );
+    } else {
+      filterComplexParts.push(
+        `${concatInputTags.join('')}concat=n=${concatInputTags.length}:v=1:a=0[vconcat]`
+      );
+    }
   }
 
   // Audio track handling: Pad / trim audio track to exactly 30.00s
@@ -182,7 +194,7 @@ export function generateMasterConcatFFmpegArgs(
     `[${audioInputIndex}:a]apad=whole_dur=${fullTargetDuration.toFixed(3)},atrim=0:${fullTargetDuration.toFixed(3)}[aout]`
   );
 
-  const preset = is4K ? 'slow' : 'ultrafast';
+  const preset = is4K ? 'fast' : 'ultrafast';
   const crf = is4K ? '15' : '23';
   const audioBitrate = is4K ? '320k' : '192k';
 

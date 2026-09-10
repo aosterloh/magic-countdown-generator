@@ -531,6 +531,23 @@ export const App: React.FC = () => {
     setIsDarkMode((prev) => !prev);
   };
 
+  // Helper: Safely parse JSON responses or extract plain-text errors without SyntaxError
+  const parseResponseJson = async (res: Response, fallbackError: string): Promise<any> => {
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return await res.json();
+    }
+    const text = await res.text();
+    if (!res.ok) {
+      throw new Error(text || `${fallbackError} (HTTP ${res.status})`);
+    }
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(text || fallbackError);
+    }
+  };
+
   // Helper: Bounded Parallel Worker Pool (Concurrency = 2)
   const runWorkerPool = async <T,>(
     items: T[],
@@ -1129,7 +1146,7 @@ export const App: React.FC = () => {
           jobId: currentJobId,
         }),
       });
-      const data = await res.json();
+      const data = await parseResponseJson(res, 'Failed to preview stitched countdown');
 
       if (data.success && data.masterVideoUri) {
         setMasterVideoUri(data.masterVideoUri);
@@ -1332,7 +1349,7 @@ export const App: React.FC = () => {
           jobId: currentJobId,
         }),
       });
-      const data = await res.json();
+      const data = await parseResponseJson(res, 'Failed to export master video');
 
       if (data.success && data.masterVideoUri) {
         setMasterVideoUri(data.masterVideoUri);
@@ -1376,7 +1393,7 @@ export const App: React.FC = () => {
             jobId: currentJobId,
           }),
         });
-        const masterData = await resMaster.json();
+        const masterData = await parseResponseJson(resMaster, 'Failed to assemble base 30s countdown master');
         setIsExportingMaster(false);
         if (masterData.success && masterData.masterVideoUri) {
           effectiveMasterUri = masterData.masterVideoUri;
@@ -1395,7 +1412,7 @@ export const App: React.FC = () => {
           masterVideoUri: effectiveMasterUri,
         }),
       });
-      const data = await res.json();
+      const data = await parseResponseJson(res, 'Failed to export extended master video');
 
       if (data.success && data.extendedMasterVideoUri) {
         setExtendedMasterVideoUri(data.extendedMasterVideoUri);
