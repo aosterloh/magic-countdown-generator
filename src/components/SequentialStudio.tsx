@@ -205,55 +205,40 @@ export const SequentialStudio: React.FC<SequentialStudioProps> = ({
               🎬 {videosCompletedCount}/10 Videos Ready
             </span>
 
-            {/* Bulk Video Create Action (Smart Missing Videos Fill-In - Unlocked when Shot #10 is synthesized) */}
+            {/* Bulk Video Create Action (Smart Missing Videos Fill-In) */}
             {showBulkVideoOption && onGenerateAllVideos && (
-              <div className="flex items-center gap-1.5">
-                <select
-                  value={selectedVeoModel}
-                  onChange={(e) => onChangeVeoModel?.(e.target.value as VeoModelType)}
-                  disabled={isBatchGeneratingVideos}
-                  className="text-xs font-semibold bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-2 py-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-sm"
-                  title="Select Veo model for bulk and individual synthesis"
-                >
-                  <option value="veo-3.1-fast-generate-preview">⚡ Veo 3.1 Fast</option>
-                  <option value="veo-3.1-generate-preview">🌟 Veo 3.1 Standard</option>
-                  <option value="veo-3.0-fast-generate-preview">⚡ Veo 3.0 Fast</option>
-                  <option value="veo-2.0-generate-001">🎬 Veo 2.0 GA</option>
-                </select>
-
-                <button
-                  type="button"
-                  onClick={() => onGenerateAllVideos(selectedVideoQuality)}
-                  disabled={isBatchGeneratingVideos || remainingVideosCount === 0}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all shadow-md ${
-                    isBatchGeneratingVideos
-                      ? 'bg-purple-600 text-white animate-pulse shadow-purple-500/25 cursor-wait'
-                      : remainingVideosCount === 0
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 cursor-default'
-                      : 'bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white shadow-purple-500/20 active:scale-95'
-                  }`}
-                  title={
-                    remainingVideosCount === 0
-                      ? 'All 10 videos have been synthesized'
-                      : `Synthesize the ${remainingVideosCount} remaining missing video clips in bulk using ${formatVeoModelName(selectedVeoModel)}`
-                  }
-                >
-                  {isBatchGeneratingVideos ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Zap className="w-3.5 h-3.5 fill-current" />
-                  )}
-                  <span>
-                    {isBatchGeneratingVideos
-                      ? `Generating Remaining (${videosCompletedCount}/10)...`
-                      : remainingVideosCount === 0
-                      ? 'All 10 Videos Created'
-                      : remainingVideosCount === 10
-                      ? `⚡ Bulk Create 10 Videos (${formatVeoModelName(selectedVeoModel)})`
-                      : `⚡ Bulk Create ${remainingVideosCount} Remaining (${formatVeoModelName(selectedVeoModel)})`}
-                  </span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => onGenerateAllVideos(selectedVideoQuality)}
+                disabled={isBatchGeneratingVideos || remainingVideosCount === 0}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-md ${
+                  isBatchGeneratingVideos
+                    ? 'bg-purple-600 text-white animate-pulse shadow-purple-500/25 cursor-wait'
+                    : remainingVideosCount === 0
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 cursor-default'
+                    : 'bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white shadow-purple-500/20 active:scale-95'
+                }`}
+                title={
+                  remainingVideosCount === 0
+                    ? 'All 10 videos have been synthesized'
+                    : `Synthesize the ${remainingVideosCount} remaining missing video clips in bulk using Veo 3.1 Fast`
+                }
+              >
+                {isBatchGeneratingVideos ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Zap className="w-3.5 h-3.5 fill-current" />
+                )}
+                <span>
+                  {isBatchGeneratingVideos
+                    ? `Generating Remaining (${videosCompletedCount}/10)...`
+                    : remainingVideosCount === 0
+                    ? 'All 10 Videos Created'
+                    : remainingVideosCount === 10
+                    ? '⚡ Bulk Create 10 Videos'
+                    : `⚡ Bulk Create ${remainingVideosCount} Remaining`}
+                </span>
+              </button>
             )}
 
             <button
@@ -362,68 +347,66 @@ export const SequentialStudio: React.FC<SequentialStudioProps> = ({
       {/* Prompts Ready Bulk Action Announcement Banner (Visible from start with Shot #10 recommendation) */}
       {showBulkVideoOption && videosCompletedCount < 10 && !isBatchGeneratingVideos && (
         <div
-          className={`border rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg animate-fadeIn backdrop-blur-md ${
+          className={`border rounded-3xl p-5 sm:p-6 shadow-xl animate-fadeIn backdrop-blur-md space-y-4 ${
             isSlot10VideoReady
-              ? 'bg-gradient-to-r from-purple-950/60 via-indigo-950/60 to-blue-950/60 border-purple-500/30 shadow-purple-950/20'
-              : 'bg-gradient-to-r from-amber-950/40 via-slate-900/90 to-purple-950/40 border-amber-500/30 shadow-slate-950/20'
+              ? 'bg-gradient-to-br from-slate-900 via-indigo-950/80 to-purple-950/90 border-purple-500/40 shadow-purple-950/30'
+              : 'bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950/80 border-slate-700/80 shadow-slate-950/40'
           }`}
         >
-          <div className="flex items-start gap-3.5">
-            <div
-              className={`p-2.5 rounded-2xl shrink-0 ${
-                isSlot10VideoReady
-                  ? 'bg-purple-500/20 text-purple-300 border border-purple-400/30'
-                  : 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
-              }`}
-            >
-              {isSlot10VideoReady ? (
-                <Zap className="w-5 h-5 fill-current" />
-              ) : (
-                <Sparkles className="w-5 h-5" />
-              )}
-            </div>
-            <div>
-              <h4 className="text-sm font-extrabold text-white flex items-center gap-2 flex-wrap">
+          {/* Header Row: Icon + Title + Status Badge */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div
+                className={`p-2.5 rounded-2xl shrink-0 ${
+                  isSlot10VideoReady
+                    ? 'bg-purple-500/20 text-purple-300 border border-purple-400/40 shadow-sm'
+                    : 'bg-amber-500/20 text-amber-300 border border-amber-400/40 shadow-sm'
+                }`}
+              >
                 {isSlot10VideoReady ? (
-                  <>
-                    <span>
-                      Synthesize Remaining Videos ({videosCompletedCount}/10 Completed)
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-500/30 text-purple-200 border border-purple-400/40">
-                      {remainingVideosCount} Remaining
-                    </span>
-                  </>
+                  <Zap className="w-5 h-5 fill-current" />
                 ) : (
-                  <>
-                    <span>Bulk Video Creation Available</span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                      💡 Recommended: Start with Nr. 10 first
-                    </span>
-                  </>
+                  <Sparkles className="w-5 h-5 text-amber-300" />
                 )}
-              </h4>
-              <p className="text-xs text-slate-300 mt-0.5 max-w-2xl">
-                {isSlot10VideoReady
-                  ? `Shot #10 verified! Synthesize the remaining ${remainingVideosCount} clips in bulk using ${formatVeoModelName(selectedVeoModel)} via parallel workers, or customize individual shots below.`
-                  : `Make Shot #10 great before applying the prompts to all other videos. Perfecting Shot #10's numeral legibility, substrate, and camera motion first ensures maximum quality across your entire countdown.`}
-              </p>
+              </div>
+              <div>
+                <h4 className="text-base sm:text-lg font-black text-white tracking-wide">
+                  {isSlot10VideoReady ? (
+                    <span>Synthesize Remaining Videos ({videosCompletedCount}/10 Ready)</span>
+                  ) : (
+                    <span>Bulk Video Creation Available</span>
+                  )}
+                </h4>
+              </div>
             </div>
+
+            {/* Status Pill Badge */}
+            {isSlot10VideoReady ? (
+              <span className="px-3.5 py-1 rounded-full text-xs font-mono font-bold bg-purple-500/30 text-purple-200 border border-purple-400/50 shadow-sm">
+                {remainingVideosCount} Remaining
+              </span>
+            ) : (
+              <span className="px-3.5 py-1.5 rounded-full text-xs font-black bg-amber-400 text-slate-950 shadow-md flex items-center gap-1.5">
+                <span>💡 Recommended: Start with Nr. 10 first</span>
+              </span>
+            )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <select
-              value={selectedVeoModel}
-              onChange={(e) => onChangeVeoModel?.(e.target.value as VeoModelType)}
-              disabled={isBatchGeneratingVideos}
-              className="text-xs font-semibold bg-slate-900/80 border border-purple-400/40 rounded-xl px-2.5 py-2.5 text-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer shadow-sm"
-              title="Select Veo model for synthesis"
-            >
-              <option value="veo-3.1-fast-generate-preview">⚡ Veo 3.1 Fast</option>
-              <option value="veo-3.1-generate-preview">🌟 Veo 3.1 Standard</option>
-              <option value="veo-3.0-fast-generate-preview">⚡ Veo 3.0 Fast</option>
-              <option value="veo-2.0-generate-001">🎬 Veo 2.0 GA</option>
-            </select>
+          {/* Full Horizontal Space Description with High Contrast */}
+          <div className="w-full text-sm sm:text-[15px] leading-relaxed text-slate-100 font-medium">
+            {isSlot10VideoReady ? (
+              <p>
+                Shot #10 verified! Synthesize the remaining <span className="text-purple-300 font-bold">{remainingVideosCount} clips</span> in bulk using parallel workers, or customize individual shots below.
+              </p>
+            ) : (
+              <p>
+                Make Shot #10 great before applying the prompts to all other videos. Perfecting Shot #10&apos;s numeral legibility, substrate, and camera motion first ensures maximum quality across your entire countdown.
+              </p>
+            )}
+          </div>
 
+          {/* Actions Row: Buttons with Full Priority */}
+          <div className="flex flex-wrap items-center justify-end gap-3 pt-2 border-t border-slate-800/80">
             {!isSlot10VideoReady && (
               <button
                 type="button"
@@ -432,7 +415,7 @@ export const SequentialStudio: React.FC<SequentialStudioProps> = ({
                   onGenerateVideo(10, selectedVideoQuality);
                 }}
                 disabled={isSlot10Loading || isBatchGeneratingVideos}
-                className="px-4 py-2.5 rounded-2xl text-xs font-black bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-lg shadow-amber-500/25 active:scale-95 transition-all flex items-center gap-1.5 whitespace-nowrap"
+                className="px-6 py-3 rounded-2xl text-xs sm:text-sm font-black bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-xl shadow-amber-500/30 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap"
                 title="Synthesize and inspect Shot #10 first"
               >
                 {isSlot10Loading ? (
@@ -449,17 +432,17 @@ export const SequentialStudio: React.FC<SequentialStudioProps> = ({
                 type="button"
                 onClick={() => onGenerateAllVideos(selectedVideoQuality)}
                 disabled={isBatchGeneratingVideos}
-                className={`px-4 py-2.5 rounded-2xl text-xs font-black active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap shadow-lg ${
+                className={`px-6 py-3 rounded-2xl text-xs sm:text-sm font-black active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap shadow-xl ${
                   !isSlot10VideoReady
-                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
-                    : 'bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 hover:from-purple-400 hover:to-blue-400 text-white shadow-purple-500/30'
+                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700'
+                    : 'bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white shadow-purple-500/30'
                 }`}
               >
                 <Zap className="w-4 h-4 fill-current" />
                 <span>
                   {remainingVideosCount === 10
-                    ? `⚡ Bulk Create 10 Videos (${formatVeoModelName(selectedVeoModel)})`
-                    : `⚡ Bulk Create ${remainingVideosCount} Remaining (${formatVeoModelName(selectedVeoModel)})`}
+                    ? '⚡ Bulk Create 10 Videos'
+                    : `⚡ Bulk Create ${remainingVideosCount} Remaining`}
                 </span>
               </button>
             )}
@@ -580,19 +563,9 @@ export const SequentialStudio: React.FC<SequentialStudioProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* Inline Veo Model Selector Dropdown */}
-            <div className="relative">
-              <select
-                value={selectedVeoModel}
-                onChange={(e) => onChangeVeoModel?.(e.target.value as VeoModelType)}
-                className="text-xs font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer pr-8"
-              >
-                <option value="veo-3.1-fast-generate-preview">⚡ Veo 3.1 Fast (Preview)</option>
-                <option value="veo-3.1-generate-preview">🌟 Veo 3.1 Standard (Preview)</option>
-                <option value="veo-3.0-fast-generate-preview">⚡ Veo 3.0 Fast</option>
-                <option value="veo-2.0-generate-001">🎬 Veo 2.0 GA</option>
-              </select>
-            </div>
+            <span className="text-[11px] font-bold text-purple-600 dark:text-purple-300 bg-purple-500/10 border border-purple-500/20 px-3 py-2 rounded-xl">
+              ⚡ Veo 3.1 Fast (720p ➔ 4K)
+            </span>
 
             <button
               type="button"
