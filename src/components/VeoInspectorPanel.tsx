@@ -44,14 +44,14 @@ export const VeoInspectorPanel: React.FC<VeoInspectorPanelProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-slate-100 flex items-center gap-1">
-                <span>Veo AI Quality Inspector</span>
+                <span>Scene Quality Inspector</span>
                 <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                  Gemini 3.8 Flash
+                  Automated Check
                 </span>
               </span>
             </div>
             <p className="text-[11px] text-slate-400">
-              Multimodal verification of Numeral &apos;{slot.diegeticNumber}&apos; across 4-second sequence
+              Visual verification of countdown number '{slot.diegeticNumber}' in final frames
             </p>
           </div>
         </div>
@@ -75,7 +75,7 @@ export const VeoInspectorPanel: React.FC<VeoInspectorPanelProps> = ({
                 ) : (
                   <>
                     <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
-                    <span>Score: {analysis.score}/10 (Number Missing/Unclear)</span>
+                    <span>Score: {analysis.score}/10 (Number Missing or Unclear)</span>
                   </>
                 )}
               </span>
@@ -84,7 +84,7 @@ export const VeoInspectorPanel: React.FC<VeoInspectorPanelProps> = ({
                 type="button"
                 onClick={() => onAnalyzeVideo(slot.index)}
                 disabled={isAnalyzing}
-                title="Re-inspect frames with Gemini 3.8 Flash"
+                title="Re-check frames"
                 className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isAnalyzing ? 'animate-spin text-purple-400' : ''}`} />
@@ -100,12 +100,12 @@ export const VeoInspectorPanel: React.FC<VeoInspectorPanelProps> = ({
               {isAnalyzing ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Inspecting 4 Frames...</span>
+                  <span>Inspecting Keyframes...</span>
                 </>
               ) : (
                 <>
                   <Eye className="w-3.5 h-3.5" />
-                  <span>🤖 Grade with AI Inspector</span>
+                  <span>🔍 Check Scene Quality</span>
                 </>
               )}
             </button>
@@ -173,15 +173,15 @@ export const VeoInspectorPanel: React.FC<VeoInspectorPanelProps> = ({
             <div>
               <span className="font-bold block">
                 {isPassed
-                  ? `Verified: Numeral '${slot.diegeticNumber}' clearly rendered in final seconds.`
-                  : `Attention Required: Numeral '${slot.diegeticNumber}' was not detected in final frames.`}
+                  ? `Verified: Number '${slot.diegeticNumber}' clearly visible in final seconds.`
+                  : `Attention Required: Number '${slot.diegeticNumber}' was not clearly detected in final frames.`}
               </span>
               <p className="mt-0.5 opacity-90 text-[11.5px]">{analysis.critique}</p>
               
-              {/* OCR Transparency Details */}
+              {/* Text Transparency Details */}
               <div className="mt-2 pt-2 border-t border-slate-700/50 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-mono">
                 <span className="flex items-center gap-1">
-                  <span className="text-slate-400">OCR Read:</span>
+                  <span className="text-slate-400">Text Read:</span>
                   <span className={`px-1.5 py-0.5 rounded font-bold ${
                     analysis.exactCharactersRead && new RegExp(`\\b${slot.diegeticNumber}\\b`).test(analysis.exactCharactersRead)
                       ? 'bg-emerald-500/20 text-emerald-300'
@@ -200,15 +200,15 @@ export const VeoInspectorPanel: React.FC<VeoInspectorPanelProps> = ({
             </div>
           </div>
 
-          {/* 1-Click AI Self-Improvement Recommendation */}
+          {/* 1-Click Self-Improvement Recommendation */}
           {!isPassed && analysis.suggestedPromptFix && (
             <div className="p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/40 text-xs space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-indigo-300 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>AI Suggested Prompt Fix (High-Contrast Numeral Priority):</span>
+                  <span>Suggested Direction Fix (Improve Number Clarity):</span>
                 </span>
-                <span className="text-[10px] font-mono text-indigo-400">1-Click Regeneration</span>
+                <span className="text-[10px] font-mono text-indigo-400">1-Click New Take</span>
               </div>
 
               <div className="p-2 rounded-lg bg-slate-950/80 border border-indigo-500/20 font-mono text-[11px] text-slate-300 leading-relaxed">
@@ -222,7 +222,7 @@ export const VeoInspectorPanel: React.FC<VeoInspectorPanelProps> = ({
                   className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-purple-500/25 transition active:scale-95"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>🪄 Apply Fix & Re-synthesize Video</span>
+                  <span>🪄 Apply Fix & Generate New Take</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>

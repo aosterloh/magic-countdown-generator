@@ -104,6 +104,30 @@ export interface JobSummary {
   readyImagesCount: number;
   readyVideosCount: number;
   hasMasterVideo: boolean;
+  masterVideoUri?: string;
+  master720pUri?: string;
+  master4kUri?: string;
+  extendedMasterVideoUri?: string;
+  extended720pUri?: string;
+  extended4kUri?: string;
+  thumbnailUri?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MasterVideoEntry {
+  jobId: string;
+  customerName: string;
+  creatorLdap?: string;
+  creativeTheme: string;
+  hasMasterVideo: boolean;
+  masterVideoUri?: string;
+  master720pUri?: string;
+  master4kUri?: string;
+  extendedMasterVideoUri?: string;
+  extended720pUri?: string;
+  extended4kUri?: string;
+  thumbnailUri?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -130,7 +154,11 @@ export interface CountdownJobState {
   currentStage: number;
   slots: CountdownSlot[];
   masterVideoUri?: string;
+  master720pUri?: string;
+  master4kUri?: string;
   extendedMasterVideoUri?: string;
+  extended720pUri?: string;
+  extended4kUri?: string;
   groundingMetadata?: GroundingMetadata;
   geminiModelUsed?: string;
   createdAt: string;
@@ -165,5 +193,8 @@ export interface VeoQueueStatus {
   maxWorkers: number;
   queue: VeoQueuedItem[];
   queueLength: number;
+  avgVideoDurationSeconds?: number;
+  estimatedRemainingSeconds?: number;
+  lastClipDurationSeconds?: number | null;
 }
 

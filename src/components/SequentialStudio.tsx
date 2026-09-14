@@ -74,6 +74,14 @@ function formatVeoModelName(rawModel?: string): string {
   return rawModel;
 }
 
+function formatEstimatedTime(seconds: number): string {
+  if (seconds <= 0) return 'Few seconds';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m === 0) return `${s}s`;
+  return `${m}m ${s.toString().padStart(2, '0')}s`;
+}
+
 export const SequentialStudio: React.FC<SequentialStudioProps> = ({
   slots,
   activeSlotIndex,
@@ -344,7 +352,104 @@ export const SequentialStudio: React.FC<SequentialStudioProps> = ({
         </div>
       </div>
 
-      {/* Prompts Ready Bulk Action Announcement Banner (Visible from start with Shot #10 recommendation) */}
+      {/* 1. Live Parallel Synthesis & Client Safety Warning Banner (Option A) */}
+      {isBatchGeneratingVideos && (
+        <div className="border border-purple-500/50 bg-gradient-to-br from-slate-950 via-purple-950/70 to-slate-900 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 animate-fadeIn">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-purple-500/20 text-purple-300 border border-purple-400/40">
+                <RefreshCw className="w-5 h-5 animate-spin text-purple-400" />
+              </div>
+              <div>
+                <h4 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                  <span>Synthesizing Remaining Videos in Parallel</span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/30 text-purple-200 border border-purple-400/40">
+                    2 Workers Active
+                  </span>
+                </h4>
+                <p className="text-xs text-slate-300">
+                  Veo 3.1 Fast clips generating concurrently with continuous rolling throughput estimation.
+                </p>
+              </div>
+            </div>
+
+            {/* Prominent Client Safety Warning Pill */}
+            <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-400/50 text-xs font-bold animate-pulse shadow-lg shadow-amber-500/10">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>Keep Browser Open — Do Not Close Tab or Sleep Laptop</span>
+            </div>
+          </div>
+
+          {/* Progress Bar & Real-time ETA */}
+          <div className="space-y-2.5 bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+            <div className="flex items-center justify-between text-xs font-bold flex-wrap gap-2">
+              <span className="text-slate-200">
+                Progress: <span className="text-purple-300">{videosCompletedCount} / 10 Videos Complete</span> ({remainingVideosCount} remaining)
+              </span>
+              <span className="text-amber-400 font-mono flex items-center gap-1.5 bg-amber-950/40 px-3 py-1 rounded-xl border border-amber-500/30">
+                <Clock className="w-3.5 h-3.5 text-amber-400" />
+                <span>
+                  Est. time remaining: ~{formatEstimatedTime(veoQueueStatus?.estimatedRemainingSeconds ?? (Math.ceil(remainingVideosCount / 2) * (veoQueueStatus?.avgVideoDurationSeconds ?? 55)))}
+                </span>
+              </span>
+            </div>
+
+            {/* Dynamic Progress Track */}
+            <div className="w-full bg-slate-950 h-3.5 rounded-full overflow-hidden border border-slate-800 p-0.5">
+              <div
+                className="bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-400 h-full rounded-full transition-all duration-500 shadow-sm"
+                style={{ width: `${Math.max(5, (videosCompletedCount / 10) * 100)}%` }}
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-400 pt-0.5 gap-2">
+              <span className="flex items-center gap-1.5">
+                <Zap className="w-3 h-3 text-cyan-400" />
+                <span>Throughput: ~{veoQueueStatus?.avgVideoDurationSeconds ?? 55}s per video across 2 concurrent workers</span>
+                {veoQueueStatus?.lastClipDurationSeconds && (
+                  <span className="text-slate-500">• (Last clip took {veoQueueStatus.lastClipDurationSeconds}s)</span>
+                )}
+              </span>
+              <span className="text-slate-500 italic">
+                Client session persists slot states to Cloud Storage upon finish
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. All 10 Videos Complete Success Banner (Safe to Close) */}
+      {videosCompletedCount === 10 && !isBatchGeneratingVideos && (
+        <div className="border border-emerald-500/40 bg-gradient-to-br from-slate-950 via-emerald-950/40 to-slate-900 rounded-3xl p-5 shadow-xl flex flex-wrap items-center justify-between gap-4 animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                <span>All 10 Countdown Videos Synthesized & Saved!</span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  100% Ready
+                </span>
+              </h4>
+              <p className="text-xs text-slate-300">
+                ✅ Safe to close: All videos are permanently saved in Google Cloud Storage. You can shut down your computer or assemble your master countdown.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onPreviewStitchedCountdown}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:opacity-90 text-white text-xs font-bold shadow-lg shadow-blue-500/20 flex items-center gap-2 active:scale-95 transition-all"
+          >
+            <Film className="w-4 h-4" />
+            <span>Master Video Assembly</span>
+          </button>
+        </div>
+      )}
+
+      {/* 3. Prompts Ready Bulk Action Announcement Banner (Visible when videos < 10 and not generating) */}
       {showBulkVideoOption && videosCompletedCount < 10 && !isBatchGeneratingVideos && (
         <div
           className={`border rounded-3xl p-5 sm:p-6 shadow-xl animate-fadeIn backdrop-blur-md space-y-4 ${

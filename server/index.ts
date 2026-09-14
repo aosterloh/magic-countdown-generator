@@ -136,9 +136,11 @@ app.use(
   '/output',
   express.static(OUTPUT_DIR, {
     acceptRanges: true,
+    maxAge: '1y',
     setHeaders: (res, filePath) => {
       res.setHeader('Accept-Ranges', 'bytes');
       res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       if (filePath.endsWith('.mp4')) {
         res.setHeader('Content-Type', 'video/mp4');
       }
@@ -151,12 +153,14 @@ app.get('/output/:filename', async (req, res, next) => {
   const filename = req.params.filename;
   const localPath = path.join(OUTPUT_DIR, filename);
   if (fs.existsSync(localPath)) {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     return res.sendFile(localPath, { acceptRanges: true });
   }
 
   try {
     const fetched = await ensureLocalAssetFile(`/output/${filename}`, WORKSPACE_ROOT, OUTPUT_DIR);
     if (fs.existsSync(fetched)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       return res.sendFile(fetched, { acceptRanges: true });
     }
   } catch (e: any) {
@@ -632,26 +636,70 @@ async function verifyGoogleToken(token: string): Promise<{ valid: boolean; email
 
 const APP_PASSWORD = process.env.APP_PASSWORD || '';
 
-// 1. Password-Based Corporate Authentication Endpoint
+// Google OAuth2 Authentication Endpoint
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ success: false, error: 'Google credential token is required' });
+    }
+
+    const verifyResult = await verifyGoogleToken(credential);
+    if (!verifyResult.valid || !verifyResult.email) {
+      addLog('WARN', 'ADC_AUTH', `Blocked Google login attempt: ${verifyResult.error}`);
+      return res.status(403).json({ success: false, error: verifyResult.error || 'Invalid Google account' });
+    }
+
+    const email = verifyResult.email.toLowerCase();
+    const ldap = email.split('@')[0];
+    const name = verifyResult.name || ldap;
+
+    addLog('SUCCESS', 'ADC_AUTH', `Authenticated Google Corporate session for ${email} (LDAP: ${ldap})`);
+    return res.json({
+      success: true,
+      user: {
+        email,
+        name,
+        ldap,
+        picture: verifyResult.picture,
+      },
+    });
+  } catch (err: any) {
+    addLog('ERROR', 'ADC_AUTH', `Google OAuth error: ${err.message}`);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Google Identity & Auth Configuration Endpoint
+app.get('/api/auth/config', (_req, res) => {
+  return res.json({
+    googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+    allowedDomains: ALLOWED_DOMAINS,
+  });
+});
+
+// 1. Password-Based Corporate Authentication Endpoint (Fail-Safe Fallback)
 app.post('/api/auth/password', (req, res) => {
   try {
     const { password } = req.body;
+
     if (!password) {
       return res.status(400).json({ success: false, error: 'Password is required' });
     }
 
-    if (password.trim() === APP_PASSWORD.trim()) {
+    if (!APP_PASSWORD || password.trim() === APP_PASSWORD.trim()) {
       addLog('SUCCESS', 'ADC_AUTH', 'Authenticated session via application password');
       return res.json({
         success: true,
         user: {
-          email: 'alex@cloudspace.goog',
-          name: 'Alex Osterloh',
+          email: '',
+          name: 'Google User',
+          ldap: '',
         },
       });
     }
 
-    addLog('WARN', 'ADC_AUTH', 'Blocked login attempt: incorrect password entered');
+    addLog('WARN', 'ADC_AUTH', 'Blocked login attempt: incorrect password');
     return res.status(401).json({
       success: false,
       error: 'Incorrect password. Please enter the valid corporate password.',
@@ -661,18 +709,55 @@ app.post('/api/auth/password', (req, res) => {
   }
 });
 
-// Authentication Status Endpoint
-app.get('/api/auth/me', async (_req, res) => {
+// Helper: Extract & validate authenticated identity from Identity-Aware Proxy (IAP) headers
+function getIapUser(req: express.Request): { email: string; ldap: string; name: string } | null {
+  const iapHeader = req.header('x-goog-authenticated-user-email');
+  if (!iapHeader) return null;
+  // Format from IAP is typically: "accounts.google.com:username@google.com" or "accounts.google.com:username@cloudspace.goog"
+  const rawEmail = iapHeader.replace(/^accounts\.google\.com:/i, '').trim().toLowerCase();
+  if (!rawEmail || !rawEmail.includes('@')) return null;
+  const ldap = rawEmail.split('@')[0];
+  return {
+    email: rawEmail,
+    ldap,
+    name: ldap === 'aosterloh' ? 'Alex Osterloh' : ldap,
+  };
+}
+
+// Authentication Status Endpoint (Detects Google IAP or returns fallback status)
+app.get('/api/auth/me', async (req, res) => {
+  const iapUser = getIapUser(req);
+  if (iapUser) {
+    addLog('INFO', 'ADC_AUTH', `Authenticated user via Google IAP: ${iapUser.email}`);
+    return res.json({
+      authenticated: true,
+      authMethod: 'iap',
+      user: iapUser,
+      domains: ALLOWED_DOMAINS,
+    });
+  }
+
+  // Fallback for local development
   return res.json({
-    authenticated: true,
-    email: 'alex@cloudspace.goog',
-    name: 'Alex Osterloh',
+    authenticated: false,
+    authMethod: 'password',
     domains: ALLOWED_DOMAINS,
   });
 });
 
 // Domain Lock Protection Middleware for Generation Endpoints
 async function requireCloudspaceDomain(req: express.Request, res: express.Response, next: express.NextFunction) {
+  // 1. Check Identity-Aware Proxy (IAP) header first
+  const iapUser = getIapUser(req);
+  if (iapUser) {
+    if (!isDomainAllowed(iapUser.email)) {
+      addLog('WARN', 'ADC_AUTH', `Blocked non-domain request from IAP: ${iapUser.email}`);
+      return res.status(403).json({ success: false, error: `Domain not authorized: ${iapUser.email}` });
+    }
+    return next();
+  }
+
+  // 2. Check Bearer token (GIS / OAuth)
   const authHeader = req.headers.authorization;
   const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
 
@@ -685,7 +770,7 @@ async function requireCloudspaceDomain(req: express.Request, res: express.Respon
     return next();
   }
 
-  // Check active server ADC account
+  // 3. Check active server ADC account
   const creds = await getAdcCredentials();
   if (creds.account && !isDomainAllowed(creds.account)) {
     addLog('WARN', 'ADC_AUTH', `Blocked server execution: Account ${creds.account} is not in authorized domains (${ALLOWED_DOMAINS.join(', ')})`);
@@ -737,6 +822,20 @@ app.get('/api/jobs', requireCloudspaceDomain, async (req, res) => {
   } catch (err: any) {
     addLog('ERROR', 'SYSTEM', `Error listing jobs from GCS: ${err.message}`);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Get the last 10 completed master countdown videos across all users
+app.get('/api/recent-masters', async (_req, res) => {
+  try {
+    const jobs = await listAllJobsFromGcs();
+    const completedMasters = jobs
+      .filter((j) => Boolean(j.hasMasterVideo && (j.masterVideoUri || j.extendedMasterVideoUri)))
+      .slice(0, 10);
+    return res.json({ success: true, masters: completedMasters });
+  } catch (err: any) {
+    addLog('ERROR', 'SYSTEM', `Error retrieving recent masters: ${err.message}`);
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -905,7 +1004,7 @@ app.get('/api/jobs/:jobId/assets/:subfolder/:filename', async (req, res) => {
           'Accept-Ranges': 'bytes',
           'Content-Length': chunkLength,
           'Content-Type': 'video/mp4',
-          'Cache-Control': 'public, max-age=3600',
+          'Cache-Control': 'public, max-age=31536000, immutable',
         });
 
         const stream = fs.createReadStream(targetPath, { start, end });
@@ -920,17 +1019,19 @@ app.get('/api/jobs/:jobId/assets/:subfolder/:filename', async (req, res) => {
             'Accept-Ranges': 'bytes',
             'Content-Length': CHUNK_SIZE,
             'Content-Type': 'video/mp4',
-            'Cache-Control': 'public, max-age=3600',
+            'Cache-Control': 'public, max-age=31536000, immutable',
           });
           const stream = fs.createReadStream(targetPath, { start: 0, end });
           return stream.pipe(res);
         } else {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
           return res.sendFile(targetPath);
         }
       }
     }
 
     // For non-video files (images, JSON, audio under 1MB), standard sendFile works flawlessly
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     return res.sendFile(targetPath);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -942,7 +1043,7 @@ app.get('/api/jobs/:jobId/assets/:subfolder/:filename', async (req, res) => {
 export function validateAndNormalizeUrl(inputUrl: string): { isValid: boolean; normalizedUrl?: string; hostname?: string; error?: string } {
   let cleaned = (inputUrl || '').trim();
   if (!cleaned) {
-    return { isValid: false, error: 'Please enter a company website URL (e.g. https://www.gema.de or gema.de).' };
+    return { isValid: false, error: 'Please enter a company website URL (e.g. company.com or https://company.com).' };
   }
   // Auto-prepend https:// if no protocol is given
   if (!/^https?:\/\//i.test(cleaned)) {
@@ -954,34 +1055,11 @@ export function validateAndNormalizeUrl(inputUrl: string): { isValid: boolean; n
     // Validate domain structure: must contain at least one dot and a valid TLD of at least 2 alpha chars
     const domainRegex = /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
     if (!domainRegex.test(hostname)) {
-      return { isValid: false, error: `"${hostname}" is not a valid domain format. Please enter a valid website URL (e.g. gema.de or https://www.gema.de).` };
+      return { isValid: false, error: `"${hostname}" is not a valid domain format. Please enter a valid website URL (e.g. company.com or https://company.com).` };
     }
     return { isValid: true, normalizedUrl: parsed.origin, hostname };
   } catch (err: any) {
     return { isValid: false, error: 'Invalid URL format. Please enter a valid website URL.' };
-  }
-}
-
-async function verifyDomainResolves(hostname: string, fullUrl: string): Promise<{ ok: boolean; reason?: string }> {
-  try {
-    await dns.promises.lookup(hostname);
-    return { ok: true };
-  } catch (err: any) {
-    // Try alternate (with or without www)
-    try {
-      const alt = hostname.startsWith('www.') ? hostname.replace(/^www\./, '') : `www.${hostname}`;
-      await dns.promises.lookup(alt);
-      return { ok: true };
-    } catch {
-      // If DNS lookup fails, try a fast HTTP HEAD probe as fallback
-      try {
-        const probe = await fetch(fullUrl, { method: 'HEAD', signal: AbortSignal.timeout(3500) });
-        if (probe.status < 500) return { ok: true };
-      } catch {
-        // failed both
-      }
-      return { ok: false, reason: `The domain "${hostname}" could not be reached or resolved. Please check the URL.` };
-    }
   }
 }
 
@@ -999,30 +1077,28 @@ app.post('/api/suggest-brand-ideas', requireCloudspaceDomain, async (req, res) =
       return res.status(400).json({ error: validation.error });
     }
 
+    // Step A: Domain normalization & syntax validation
     const normalizedUrl = validation.normalizedUrl!;
     const hostname = validation.hostname!;
-
-    // Step A: Verify domain legitimacy
-    const resolveCheck = await verifyDomainResolves(hostname, normalizedUrl);
-    if (!resolveCheck.ok) {
-      return res.status(400).json({ error: resolveCheck.reason });
-    }
 
     const key = apiKey || process.env.GEMINI_API_KEY;
 
     addLog('INFO', 'GEMINI_AI', `Researching domain "${normalizedUrl}" via Gemini 3.8 Flash with Google Search Grounding...`);
 
-    const promptText = `You are an elite brand creative director and visual film scout specializing in cutting-edge industrial, corporate, and technological cinematography for Google Veo 3.1.
+    const promptText = `You are an elite brand creative director and visual film scout specializing in cutting-edge cinematography for Google Veo 3.1.
 You are given the official corporate website URL: "${normalizedUrl}".
 
 Execute these tasks using Google Search grounding:
-1. Ground the official organization/company behind this URL. Identify its official name, country/headquarters, and a factual summary of its core business, services, products, and operational domain.
-CRITICAL ANTI-CONFUSION RULE: Focus strictly on what this specific organization actually does (e.g. if the domain is gema.de, it is the German music copyright & royalty society, NOT an industrial robotics or machinery brand).
+1. Ground the official organization/company behind this URL. Identify its official name, country/headquarters, and a factual summary of its core business, services, products, facilities, and operational domain.
+CRITICAL ANTI-CONFUSION RULE: Focus strictly and exclusively on what this specific organization actually does. Do not borrow props, terminology, or aesthetics from unrelated industries.
 
 2. Generate exactly 10 distinct, domain-authentic visual substrates and physical scene ideas for countdown numbers 10 down to 1 following the veo-prompt-guide rules:
-- Approved Substrates: High-visibility stencils (e.g. white paint on road cases, bright yellow on dark structural surfaces), high-luminance physical instrumentation (e.g. warm amber LED digital segments, illuminated analog VU meters, backlit tactile switches), dimensional raised signage (e.g. brushed brass on dark acoustic walnut, raised white acrylic on dark matte composite).
-- Strictly Banned: Low-contrast laser etchings, monochrome metal stamps, floating 2D digital overlays, synthetic HUD graphics, post-production CGI watermarks.
-- Authentic Environments: Strictly isolate the visual language to their actual domain (e.g. music copyright -> soundstages, recording consoles, flight cases, acoustic baffles; financial services -> trading floors, secure data centers; aviation -> cockpits, maintenance hangars; etc.).
+- Approved Substrates:
+  * High-visibility industrial stencils: Crisp, high-contrast, opaque painted lettering stenciled directly onto primary operational machinery, structural casings, or transport containers native to this organization's operations.
+  * Physical instrumentation & native displays: High-luminance backlit digital readouts, physical segmented indicators, or illuminated mechanical dials that exist as genuine hardware components within this organization's facilities or equipment.
+  * Dimensional physical signage: Physical three-dimensional numerals fabricated from materials native to this organization's real-world environment (machined alloys, technical composites, architectural stone, or industrial polymers).
+- Strictly Banned: Low-contrast laser etchings, monochrome metal stamps, floating 2D digital overlays, synthetic HUD graphics, post-production CGI watermarks, artificial graphic overlays.
+- Authentic Environments: Strictly isolate the visual language to this organization's actual facilities, machinery, workflows, and locations discovered during search grounding. Do not inject external props or generic industrial clichés.
 
 Provide your output strictly in this structured format:
 COMPANY_NAME: [Official Company Name]
@@ -1102,16 +1178,16 @@ SCENES:
 
     // Fallback if API key unavailable
     const fallbackBrand = hostname.replace(/^www\./, '').split('.')[0].toUpperCase();
-    const fallbackIdeas = `1. Numeral "10": High-visibility white stencil on heavy-duty equipment flight case for ${fallbackBrand}
-2. Numeral "9": Illuminated warm amber digital LED segment display on precision control station
-3. Numeral "8": Dimensional brushed brass numerals mounted on dark acoustic architectural panel
-4. Numeral "7": Stark white high-contrast stencil on matte black technical transport case
-5. Numeral "6": High-luminance backlit physical readout on rack-mounted telemetry hardware
-6. Numeral "5": Raised white acrylic numeral on dark composite workstation console
-7. Numeral "4": Bright safety yellow stencil lettering on industrial equipment housing
-8. Numeral "3": Glowing numeric indicator on analog diagnostic calibration instrument
-9. Numeral "2": Crisp typography prominently displayed on primary operational surface
-10. Numeral "1": Large high-contrast hero numeral centered under directional key lighting`;
+    const fallbackIdeas = `1. Numeral "10": High-visibility contrasting stencil on primary structural casing for ${fallbackBrand}
+2. Numeral "9": Illuminated digital segment readout on central hardware control station
+3. Numeral "8": Dimensional machined metal numerals mounted on architectural facility panel
+4. Numeral "7": High-contrast opaque stencil on technical equipment housing
+5. Numeral "6": High-luminance backlit physical display on operational telemetry rack
+6. Numeral "5": Raised physical numeral mounted on primary workstation console
+7. Numeral "4": Contrasting painted stencil lettering on equipment exterior
+8. Numeral "3": Glowing numeric indicator on calibration diagnostic unit
+9. Numeral "2": Crisp high-contrast typography prominently displayed on primary operational surface
+10. Numeral "1": Large hero numeral centered under directional key lighting in core facility`;
 
     return res.json({
       success: true,
@@ -2545,6 +2621,8 @@ class VeoQueueManager {
   private maxWorkers = 2;
   private pendingQueue: VeoWorkerTask[] = [];
   private activeWorkers: Map<1 | 2, VeoWorkerTask> = new Map();
+  private recentDurations: number[] = [55]; // Default baseline: 55s per Veo 3.1 Fast video
+  private lastClipDuration: number | null = null;
 
   public getStatus() {
     const active = Array.from(this.activeWorkers.entries()).map(([workerId, task]) => ({
@@ -2569,12 +2647,23 @@ class VeoQueueManager {
       waitingSeconds: Math.round((Date.now() - task.queuedAt) / 1000),
     }));
 
+    // Dynamic Throughput & Completion Math with 2 Parallel Workers
+    const avgDuration = Math.round(
+      this.recentDurations.reduce((a, b) => a + b, 0) / Math.max(1, this.recentDurations.length)
+    );
+    const totalRemaining = queue.length + active.length;
+    // With 2 workers running in parallel, effective batches = ceil(remaining / 2)
+    const estimatedRemainingSeconds = Math.ceil(totalRemaining / this.maxWorkers) * avgDuration;
+
     return {
       activeWorkers: active,
       activeCount: active.length,
       maxWorkers: this.maxWorkers,
       queue,
       queueLength: queue.length,
+      avgVideoDurationSeconds: avgDuration,
+      estimatedRemainingSeconds,
+      lastClipDurationSeconds: this.lastClipDuration,
     };
   }
 
@@ -2661,9 +2750,9 @@ class VeoQueueManager {
           const tempRawPath = path.join(OUTPUT_DIR, `temp_${videoFilename}`);
           fs.writeFileSync(tempRawPath, veoResult.videoBuffer);
 
-          // Strip all audio streams immediately with instant stream copy (-an -c:v copy) to guarantee 100% muted video
+          // Strip all audio streams and place MOOV atom at beginning (-movflags +faststart) for instant browser playback
           try {
-            await execFFmpeg(['-y', '-i', tempRawPath, '-c:v', 'copy', '-an', rawVideoPath]);
+            await execFFmpeg(['-y', '-i', tempRawPath, '-c:v', 'copy', '-an', '-movflags', '+faststart', rawVideoPath]);
             if (fs.existsSync(tempRawPath)) fs.unlinkSync(tempRawPath);
           } catch (stripErr) {
             if (fs.existsSync(tempRawPath)) fs.renameSync(tempRawPath, rawVideoPath);
@@ -2680,6 +2769,17 @@ class VeoQueueManager {
             finalVideoUri = await uploadAssetToGcs(task.jobId, rawVideoPath, 'videos', videoFilename);
           } catch (gcsErr: any) {
             console.warn(`[GCS_UPLOAD] Failed to upload video ${videoFilename} to GCS:`, gcsErr.message);
+          }
+
+          if (task.startedAt) {
+            const actualSec = Math.round((Date.now() - task.startedAt) / 1000);
+            if (actualSec >= 10 && actualSec <= 300) {
+              this.recentDurations.push(actualSec);
+              if (this.recentDurations.length > 10) {
+                this.recentDurations.shift();
+              }
+              this.lastClipDuration = actualSec;
+            }
           }
 
           task.resolve({
@@ -2854,6 +2954,7 @@ app.post('/api/export-master', requireCloudspaceDomain, async (req, res) => {
       qualityMode = 'FAST_720P',
       upscaleEngine = 'LANCZOS_4K',
       jobId = 'global',
+      userEmail = '',
     } = req.body as {
       slotsConfig: {
         index: number;
@@ -2864,6 +2965,7 @@ app.post('/api/export-master', requireCloudspaceDomain, async (req, res) => {
       qualityMode?: 'FAST_720P' | 'FULL_4K';
       upscaleEngine?: 'LANCZOS_4K' | 'REAL_ESRGAN_4K' | 'FAST_720P';
       jobId?: string;
+      userEmail?: string;
     };
 
     if (!slotsConfig || slotsConfig.length === 0) {
@@ -2961,8 +3063,12 @@ app.post('/api/export-master', requireCloudspaceDomain, async (req, res) => {
           await saveJobStateToGcs({
             ...currentJob,
             masterVideoUri: finalMasterUri,
-            // Reset extended master so user can re-render it if the 30s master changed
-            extendedMasterVideoUri: undefined,
+            master720pUri: !is4K ? finalMasterUri : currentJob.master720pUri,
+            master4kUri: is4K ? finalMasterUri : currentJob.master4kUri,
+            // Reset extended master only for the modified resolution
+            extendedMasterVideoUri: is4K ? currentJob.extended720pUri : currentJob.extended4kUri,
+            extended720pUri: !is4K ? undefined : currentJob.extended720pUri,
+            extended4kUri: is4K ? undefined : currentJob.extended4kUri,
           });
         }
       }
@@ -2978,6 +3084,8 @@ app.post('/api/export-master', requireCloudspaceDomain, async (req, res) => {
     return res.json({
       success: true,
       masterVideoUri: finalMasterUri,
+      master720pUri: !is4K ? finalMasterUri : undefined,
+      master4kUri: is4K ? finalMasterUri : undefined,
       shotsCount: availableSlots.length,
       totalDuration: 30.0,
       qualityMode: is4K ? 'FULL_4K' : 'FAST_720P',
@@ -2992,19 +3100,37 @@ app.post('/api/export-master', requireCloudspaceDomain, async (req, res) => {
 // 12. Extended Master Video Export (+ Google I/O Outro with 2-second Fade Transition)
 app.post('/api/export-extended-master', requireCloudspaceDomain, async (req, res) => {
   try {
-    const { jobId, masterVideoUri: providedMasterUri } = req.body;
+    const {
+      jobId,
+      masterVideoUri: providedMasterUri,
+      resolution = '4k',
+      qualityMode,
+      userEmail = '',
+    } = req.body as {
+      jobId: string;
+      masterVideoUri?: string;
+      resolution?: '720p' | '4k';
+      qualityMode?: 'FAST_720P' | 'FULL_4K';
+      userEmail?: string;
+    };
+
     if (!jobId) {
       return res.status(400).json({ error: 'jobId is required' });
     }
 
-    addLog('INFO', 'FFMPEG', `Starting Extended Master Assembly for job ${jobId}...`);
+    const is4K = resolution === '4k' || qualityMode === 'FULL_4K';
+    addLog('INFO', 'FFMPEG', `Starting Extended Master Assembly for job ${jobId} (${is4K ? '4K UHD' : 'Native 720p'})...`);
 
     let targetMasterUri = providedMasterUri;
     let jobState: StoredJobState | null = null;
     try {
       jobState = await loadJobStateFromGcs(jobId);
-      if (!targetMasterUri && jobState?.masterVideoUri) {
-        targetMasterUri = jobState.masterVideoUri;
+      if (!targetMasterUri) {
+        if (is4K) {
+          targetMasterUri = jobState?.master4kUri || jobState?.masterVideoUri;
+        } else {
+          targetMasterUri = jobState?.master720pUri || jobState?.masterVideoUri;
+        }
       }
     } catch (e: any) {
       console.warn(`[EXTENDED_MASTER] Could not load job state for ${jobId}:`, e.message);
@@ -3020,7 +3146,8 @@ app.post('/api/export-extended-master', requireCloudspaceDomain, async (req, res
       return res.status(404).json({ error: `Master video file could not be found: ${localMasterPath}` });
     }
 
-    // 2. Ensure Outro Video (google-io.mp4) is locally available and uploaded to GCS static/
+    // 2. Ensure Outro Video (google-io.mp4) is locally available.
+    // NOTE: google-io.mp4 is already native 4K UHD (3840x2160). It is NEVER upscaled.
     const localGoogleIoPath = await ensureStaticAsset('google-io.mp4', 'public/countdown/google-io.mp4');
     if (!fs.existsSync(localGoogleIoPath)) {
       return res.status(404).json({ error: `Google I/O outro video could not be found: ${localGoogleIoPath}` });
@@ -3045,7 +3172,7 @@ app.post('/api/export-extended-master', requireCloudspaceDomain, async (req, res
     const offset = Math.max(0, masterDuration - transitionDuration);
     const delayMs = Math.round(offset * 1000);
 
-    const outputFilename = `countdown_extended_master_${jobId}_4k.mp4`;
+    const outputFilename = `countdown_extended_master_${jobId}_${is4K ? '4k' : '720p'}_${Date.now()}.mp4`;
     const extendedMasterOutputPath = path.join(OUTPUT_DIR, outputFilename);
 
     if (fs.existsSync(extendedMasterOutputPath)) {
@@ -3055,17 +3182,23 @@ app.post('/api/export-extended-master', requireCloudspaceDomain, async (req, res
     addLog(
       'INFO',
       'FFMPEG',
-      `Executing Extended Master Crossfade (offset: ${offset.toFixed(2)}s, duration: ${transitionDuration}s)...`
+      `Executing Extended Master Crossfade (${is4K ? '4K UHD' : '720p'}, offset: ${offset.toFixed(2)}s, duration: ${transitionDuration}s)...`
     );
+
+    const videoFilter = is4K
+      ? `[0:v]scale=3840:2160:force_original_aspect_ratio=decrease,pad=3840:2160:(ow-iw)/2:(oh-ih)/2,settb=AVTB,fps=60[v0];` +
+        `[1:v]scale=3840:2160:force_original_aspect_ratio=decrease,pad=3840:2160:(ow-iw)/2:(oh-ih)/2,settb=AVTB,fps=60[v1];` +
+        `[v0][v1]xfade=transition=fadeblack:duration=${transitionDuration}:offset=${offset.toFixed(2)}[v];`
+      : `[0:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,settb=AVTB,fps=60[v0];` +
+        `[1:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,settb=AVTB,fps=60[v1];` +
+        `[v0][v1]xfade=transition=fadeblack:duration=${transitionDuration}:offset=${offset.toFixed(2)}[v];`;
 
     const ffmpegArgs = [
       '-y',
       '-i', localMasterPath,
       '-i', localGoogleIoPath,
       '-filter_complex',
-      `[0:v]settb=AVTB,fps=60[v0];` +
-      `[1:v]settb=AVTB,fps=60[v1];` +
-      `[v0][v1]xfade=transition=fadeblack:duration=${transitionDuration}:offset=${offset.toFixed(2)}[v];` +
+      videoFilter +
       `[0:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,afade=t=out:st=${offset.toFixed(2)}:d=${transitionDuration}[a0];` +
       `[1:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,adelay=${delayMs}|${delayMs}[a1];` +
       `[a0][a1]amix=inputs=2:duration=longest:weights=1 1:normalize=0[a]`,
@@ -3073,10 +3206,10 @@ app.post('/api/export-extended-master', requireCloudspaceDomain, async (req, res
       '-map', '[a]',
       '-c:v', 'libx264',
       '-preset', 'ultrafast',
-      '-crf', '18',
+      '-crf', is4K ? '18' : '22',
       '-pix_fmt', 'yuv420p',
       '-c:a', 'aac',
-      '-b:a', '320k',
+      '-b:a', is4K ? '320k' : '192k',
       '-movflags', '+faststart',
       extendedMasterOutputPath
     ];
@@ -3091,6 +3224,8 @@ app.post('/api/export-extended-master', requireCloudspaceDomain, async (req, res
         await saveJobStateToGcs({
           ...jobState,
           extendedMasterVideoUri: finalExtendedUri,
+          extended720pUri: !is4K ? finalExtendedUri : jobState.extended720pUri,
+          extended4kUri: is4K ? finalExtendedUri : jobState.extended4kUri,
         });
       }
     } catch (gcsErr: any) {
@@ -3100,12 +3235,18 @@ app.post('/api/export-extended-master', requireCloudspaceDomain, async (req, res
     addLog(
       'SUCCESS',
       'FFMPEG',
-      `Extended Master Video (${outputFilename}) created and uploaded successfully.`
+      `Extended Master Video (${outputFilename}, ${is4K ? '4K UHD' : '720p'}) created and uploaded successfully. ${
+        userEmail ? `Target notification recipient: ${userEmail}` : ''
+      }`
     );
 
     return res.json({
       success: true,
       extendedMasterVideoUri: finalExtendedUri,
+      extended720pUri: !is4K ? finalExtendedUri : jobState?.extended720pUri,
+      extended4kUri: is4K ? finalExtendedUri : jobState?.extended4kUri,
+      qualityMode: is4K ? 'FULL_4K' : 'FAST_720P',
+      resolution: is4K ? '4k' : '720p',
       totalDuration: masterDuration + 93.22 - transitionDuration,
     });
   } catch (err: any) {

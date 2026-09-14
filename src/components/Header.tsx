@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Key, Activity, Sun, Moon, Sparkles, ExternalLink, CheckCircle2, X, Terminal, RefreshCw, Image as ImageIcon, ShieldCheck, FolderOpen, Plus, HelpCircle, Volume2, VolumeX, Film, Play } from 'lucide-react';
+import { Key, Activity, Sun, Moon, Sparkles, ExternalLink, CheckCircle2, X, Terminal, RefreshCw, Image as ImageIcon, ShieldCheck, FolderOpen, Plus, HelpCircle, Volume2, VolumeX, Film, Play, LogOut, MoreHorizontal, FileText, Settings } from 'lucide-react';
 import { ImageModelType, VeoModelType, AuthMode, JobSummary } from '../types';
 import { getMediaUrl } from '../utils/media';
 import { ProjectsModal } from './ProjectsModal';
-import { HelpModal } from './HelpModal';
 
 interface HeaderProps {
   apiKey: string;
@@ -19,7 +18,7 @@ interface HeaderProps {
   onToggleTheme: (e?: React.MouseEvent) => void;
   soundEnabled?: boolean;
   onToggleSound?: () => void;
-  authUser?: { email: string; name: string } | null;
+  authUser?: { email: string; name: string; ldap?: string; picture?: string } | null;
   onSignOut?: () => void;
   currentJobId: string | null;
   jobs: JobSummary[];
@@ -32,6 +31,7 @@ interface HeaderProps {
   onRefreshJobs: () => void;
   onOpenPromptGuide?: () => void;
   hasCustomPromptGuide?: boolean;
+  onOpenWelcomeGuide?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -60,15 +60,33 @@ export const Header: React.FC<HeaderProps> = ({
   onRefreshJobs,
   onOpenPromptGuide,
   hasCustomPromptGuide = false,
+  onOpenWelcomeGuide,
 }) => {
   const [showProjectsModal, setShowProjectsModal] = useState(false);
-  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showBulkDeleteInModal, setShowBulkDeleteInModal] = useState(false);
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [showTestModal, setShowTestModal] = useState(false);
   const [showLogsModal, setShowLogsModal] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const [tempKey, setTempKey] = useState(apiKey);
   const [tempModel, setTempModel] = useState<ImageModelType>(selectedModel);
   const [tempVeoModel, setTempVeoModel] = useState<VeoModelType>(selectedVeoModel);
+
+  // Close moreMenu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    };
+    if (showMoreMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMoreMenu]);
 
   // Test Gemini API State
   const [isTestingApi, setIsTestingApi] = useState(false);
@@ -158,8 +176,8 @@ export const Header: React.FC<HeaderProps> = ({
       badge: '720p Turbo',
     },
     'veo-3.1-generate-preview': {
-      name: 'Veo 3.1 Master (Preview)',
-      desc: 'Google DeepMind flagship video model for 4K UHD masters',
+      name: 'Veo 3.1 Studio (Preview)',
+      desc: 'High fidelity video model for 4K UHD final exports',
       badge: '4K Flagship',
     },
   };
@@ -178,65 +196,52 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="w-2.5 h-2.5 rounded-full bg-[#34A853]" />
         </div>
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
               Magic Countdown Generator
             </h1>
-            <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Gemini 3.8 Flash &amp; Veo 3.1</span>
-            </span>
-            <a
-              href="/specifications/spec_v12.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/60 flex items-center gap-1 transition-all shadow-sm"
-              title="Open EGM Complete Master Specification HTML (v12.0)"
-            >
-              <span>EGM v12.0 Spec</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
-            <div className="flex items-center gap-1">
+            {onOpenWelcomeGuide && (
               <button
                 type="button"
-                onClick={onOpenPromptGuide}
-                className={`px-2.5 py-0.5 text-xs font-bold rounded-full border flex items-center gap-1.5 transition-all shadow-sm ${
-                  hasCustomPromptGuide
-                    ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/60'
-                    : 'bg-blue-50 dark:bg-blue-950 text-[#4285F4] hover:text-blue-700 dark:hover:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/60'
-                }`}
-                title="Open and edit your personalized Veo 3 Prompt Engineering Guide"
+                onClick={onOpenWelcomeGuide}
+                className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 flex items-center gap-1.5 transition-all shadow-sm cursor-pointer active:scale-95"
+                title="Show 3-step guide: How Magic Countdown works"
               >
-                <Film className={`w-3 h-3 ${hasCustomPromptGuide ? 'text-amber-500' : 'text-[#4285F4]'}`} />
-                <span>Veo 3 Prompt Guide</span>
-                {hasCustomPromptGuide ? (
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" title="Customized guidelines active" />
-                ) : null}
+                <HelpCircle className="w-3.5 h-3.5 text-white" />
+                <span>How It Works</span>
               </button>
-              <a
-                href="/veo-prompt-rules.html"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-                title="Open read-only HTML guide in new tab"
-              >
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
+            )}
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            30-Second Cinematic Countdown Generator (Powered by Gemini 3.8 Flash &amp; Veo 3.1)
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            30-Second Cinematic Countdown Generator · Created by{' '}
+            <a
+              href="https://moma.corp.google.com/person/aosterloh"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#1a73e8] dark:text-[#8ab4f8] font-semibold hover:underline inline-flex items-center gap-0.5"
+              title="Open aosterloh@ on Google MoMa Directory"
+            >
+              <span>aosterloh@</span>
+              <ExternalLink className="w-2.5 h-2.5" />
+            </a>
           </p>
         </div>
       </div>
 
       <div className="flex items-center gap-2.5">
-        {/* Projects Popup Button */}
+        {/* Projects Popup Button (Shift+Click triggers Maintenance Mode) */}
         <button
           type="button"
-          onClick={() => setShowProjectsModal(true)}
+          onClick={(e) => {
+            if (e.shiftKey) {
+              setShowBulkDeleteInModal(true);
+            } else {
+              setShowBulkDeleteInModal(false);
+            }
+            setShowProjectsModal(true);
+          }}
           className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold text-xs shadow-sm transition-all active:scale-95 group"
-          title="Open Projects Management"
+          title="Open Projects Management (Shift+Click for Project Maintenance)"
         >
           <FolderOpen className="w-4 h-4 text-[#4285F4] group-hover:scale-110 transition-transform" />
           <span className="truncate max-w-[150px]">{activeCustomerName}</span>
@@ -291,59 +296,171 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="hidden sm:inline">New Project</span>
         </button>
 
-        {/* Help Explainer Button */}
-        <button
-          type="button"
-          onClick={() => setShowHelpModal(true)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold text-xs shadow-sm transition-all active:scale-95 group"
-          title="How Magic Countdown Generator Works"
-        >
-          <HelpCircle className="w-4 h-4 text-[#4285F4] group-hover:scale-110 transition-transform" />
-          <span>Help</span>
-        </button>
+        {/* More Options Dropdown Menu */}
+        <div className="relative" ref={moreMenuRef}>
+          <button
+            type="button"
+            onClick={() => setShowMoreMenu((prev) => !prev)}
+            className={`p-2.5 rounded-xl border transition-all shadow-sm flex items-center justify-center ${
+              showMoreMenu
+                ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/60 text-[#4285F4]'
+                : 'border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+            title="More Options & Utilities"
+          >
+            <MoreHorizontal className="w-4 h-4" />
+          </button>
 
-        {/* Demo Presentation Link */}
-        <a
-          href="https://docs.google.com/presentation/d/1UiozkVzzAuUBGM9DnBwH7w1YXW5Bg4TGWKG_LLCrozE/present?resourcekey=0-DtBmf2QuW69Mh66-ZLXlYA&slide=id.p"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold text-xs shadow-sm transition-all active:scale-95 group"
-          title="Open Google Slides Demo Presentation"
-        >
-          <Play className="w-3.5 h-3.5 fill-[#EA4335] text-[#EA4335] group-hover:scale-110 transition-transform" />
-          <span>Demo</span>
-          <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200" />
-        </a>
+          {showMoreMenu && (
+            <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl py-2 z-50 animate-scaleUp text-xs">
+              <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                Preferences &amp; Tools
+              </div>
 
-        {/* Audio Chimes Sound Toggle */}
-        <button
-          type="button"
-          onClick={onToggleSound}
-          className={`p-2.5 rounded-xl border transition-all shadow-sm flex items-center gap-1.5 ${
-            soundEnabled
-              ? 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 text-[#4285F4]'
-              : 'border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
-          }`}
-          title={soundEnabled ? 'Progress Chimes: Sound Enabled (Click to mute)' : 'Progress Chimes: Muted (Click to enable)'}
-        >
-          {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-        </button>
+              {/* Theme Mode Toggle */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  onToggleTheme(e);
+                  setShowMoreMenu(false);
+                }}
+                className="w-full px-3.5 py-2.5 flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors"
+              >
+                <div className="flex items-center gap-2.5 font-medium">
+                  {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600 dark:text-slate-300" />}
+                  <span>Appearance</span>
+                </div>
+                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                  {isDarkMode ? 'Dark' : 'Light'}
+                </span>
+              </button>
 
-        {/* Light / Dark Mode Toggle Button */}
-        <button
-          type="button"
-          onClick={(e) => onToggleTheme(e)}
-          className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm"
-          title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-        >
-          {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
-        </button>
+              {/* Sound Audio Chimes Toggle */}
+              {onToggleSound && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onToggleSound();
+                  }}
+                  className="w-full px-3.5 py-2.5 flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 font-medium">
+                    {soundEnabled ? (
+                      <Volume2 className="w-4 h-4 text-[#4285F4]" />
+                    ) : (
+                      <VolumeX className="w-4 h-4 text-slate-400" />
+                    )}
+                    <span>Sound Chimes</span>
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      soundEnabled
+                        ? 'bg-blue-100 dark:bg-blue-950 text-[#1a73e8] dark:text-[#8ab4f8]'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {soundEnabled ? 'ON' : 'MUTED'}
+                  </span>
+                </button>
+              )}
+
+              <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                Resources &amp; Guides
+              </div>
+
+              {/* Demo Google Slides Link */}
+              <a
+                href="https://docs.google.com/presentation/d/1UiozkVzzAuUBGM9DnBwH7w1YXW5Bg4TGWKG_LLCrozE/present?resourcekey=0-DtBmf2QuW69Mh66-ZLXlYA&slide=id.p"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShowMoreMenu(false)}
+                className="w-full px-3.5 py-2.5 flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors"
+              >
+                <div className="flex items-center gap-2.5 font-medium">
+                  <Play className="w-4 h-4 fill-[#EA4335] text-[#EA4335]" />
+                  <span>Demo Slides</span>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+              </a>
+
+              {/* Creative Direction Guide */}
+              {onOpenPromptGuide && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenPromptGuide();
+                    setShowMoreMenu(false);
+                  }}
+                  className="w-full px-3.5 py-2.5 flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 font-medium">
+                    <Film className={`w-4 h-4 ${hasCustomPromptGuide ? 'text-amber-500' : 'text-[#4285F4]'}`} />
+                    <span>Creative Direction Guide</span>
+                  </div>
+                  {hasCustomPromptGuide ? (
+                    <span className="w-2 h-2 rounded-full bg-amber-400" title="Customized guidelines active" />
+                  ) : (
+                    <span className="text-[10px] font-mono text-slate-400">Rules</span>
+                  )}
+                </button>
+              )}
+
+              {/* EGM Specification */}
+              <a
+                href="/specifications/spec_v12.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShowMoreMenu(false)}
+                className="w-full px-3.5 py-2.5 flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors"
+              >
+                <div className="flex items-center gap-2.5 font-medium">
+                  <FileText className="w-4 h-4 text-purple-500" />
+                  <span>EGM v12.0 Complete Spec</span>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+              </a>
+            </div>
+          )}
+        </div>
+
+        {/* User Identity & Sign Out */}
+        {authUser && (
+          <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-200 dark:border-slate-800">
+            <div
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-700 dark:text-slate-300 shadow-sm"
+              title={`Signed in as ${authUser.email}`}
+            >
+              {authUser.picture ? (
+                <img src={authUser.picture} alt="" className="w-4 h-4 rounded-full" />
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              )}
+              <span className="font-bold max-w-[110px] truncate">
+                {authUser.ldap || (authUser.email ? authUser.email.split('@')[0] : authUser.name || 'Google User')}
+              </span>
+            </div>
+            {onSignOut && (
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors shadow-sm"
+                title="Sign out of application"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Projects Management Modal */}
       <ProjectsModal
         isOpen={showProjectsModal}
-        onClose={() => setShowProjectsModal(false)}
+        onClose={() => {
+          setShowProjectsModal(false);
+          setShowBulkDeleteInModal(false);
+        }}
         currentJobId={currentJobId}
         jobs={jobs}
         isLoading={isLoadingJobs}
@@ -352,12 +469,8 @@ export const Header: React.FC<HeaderProps> = ({
         onDeleteJob={onDeleteJob}
         onBulkDeleteAllJobs={onBulkDeleteAllJobs}
         onRefreshJobs={onRefreshJobs}
-      />
-
-      {/* Help Explainer Modal */}
-      <HelpModal
-        isOpen={showHelpModal}
-        onClose={() => setShowHelpModal(false)}
+        currentLdap={authUser?.ldap || (authUser?.email ? authUser.email.split('@')[0] : undefined)}
+        showBulkDelete={showBulkDeleteInModal}
       />
 
       {/* PORTAL MODAL 1: Log Analysis Modal */}

@@ -91,12 +91,12 @@ export const SlotCard: React.FC<SlotCardProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono font-bold text-[#4285F4] dark:text-blue-400 uppercase tracking-wider">
-                Shot #{slot.index} • Countdown {slot.diegeticNumber}
+                Scene #{slot.diegeticNumber} (Countdown {slot.diegeticNumber})
               </span>
               {slot.isVideoLoading && (
                 <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-300 border border-purple-300 dark:border-purple-800 text-[11px] font-bold animate-pulse">
                   <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-ping" />
-                  <span>⚡ Worker {slot.activeWorkerId ? `#${slot.activeWorkerId}` : 'Active'}: Synthesizing Veo 3 Video</span>
+                  <span>Rendering Scene #{slot.diegeticNumber}...</span>
                 </span>
               )}
               {slot.rawVideoUri && (
@@ -106,12 +106,12 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                     : 'bg-emerald-50 dark:bg-emerald-950/60 text-[#34A853] border border-emerald-200 dark:border-emerald-800'
                 }`}>
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  {slot.videoQuality === 'FULL_4K' ? '🌟 4K UHD Master Ready' : '⚡ 720p Fast Preview Ready'}
+                  {slot.videoQuality === 'FULL_4K' ? '🌟 4K Ultra HD Ready' : '⚡ Fast Preview Ready'}
                 </span>
               )}
             </div>
             <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight mt-0.5">
-              {slot.sceneConcept || `Diegetic Shot #${slot.index}`}
+              {slot.sceneConcept || `Scene #${slot.diegeticNumber}`}
             </h3>
             {slot.revealMechanism && (
               <div className="flex items-start gap-2 p-2.5 rounded-xl bg-purple-500/10 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800/60 text-xs text-purple-900 dark:text-purple-200 mt-2">
@@ -173,7 +173,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             <div className="flex items-center justify-between px-2 py-1 z-10">
               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-purple-900/90 text-purple-200 border border-purple-700 flex items-center gap-1.5">
                 <Video className="w-3 h-3 text-purple-400" />
-                <span>{slot.isVideoLoading ? `⚡ Worker ${slot.activeWorkerId ? `#${slot.activeWorkerId}` : '1'} Active` : 'Veo 3 Transition Video'}</span>
+                <span>{slot.isVideoLoading ? 'Rendering Scene...' : 'Scene Video'}</span>
               </span>
               {slot.rawVideoUri && (
                 <button
@@ -196,10 +196,10 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                   <div>
                     <span className="text-xs font-mono font-bold text-purple-300 uppercase tracking-widest block flex items-center justify-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
-                      <span>Worker {slot.activeWorkerId ? `#${slot.activeWorkerId}` : '1'} Interpolating Keyframes</span>
+                      <span>Rendering Scene #{slot.diegeticNumber}</span>
                     </span>
                     <p className="text-xs text-slate-300 font-medium mt-1">
-                      Generating 4.0s @ 60fps Veo 3 camera motion from Frame 1 to Frame N...
+                      Generating 4.0s @ 60fps camera motion and number reveal...
                     </p>
                   </div>
                   <div className="w-56 h-1.5 bg-slate-800 rounded-full overflow-hidden mx-auto">
@@ -214,14 +214,14 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                 </div>
                 <div className="space-y-1 max-w-md">
                   <span className="text-xs font-bold text-rose-400 uppercase tracking-wider block">
-                    Veo 3 Video Generation Paused
+                    Video Generation Paused
                   </span>
                   <p className="text-xs text-slate-300 font-medium leading-relaxed">
                     {slot.videoError.toLowerCase().includes('quota') || slot.videoError.toLowerCase().includes('429')
-                      ? 'Google Veo AI is currently handling heavy traffic across the region. Click Retry below.'
+                      ? 'Server is currently handling heavy traffic across the region. Click Retry below.'
                       : slot.videoError.toLowerCase().includes('timeout') || slot.videoError.toLowerCase().includes('140s')
-                      ? 'Video generation took longer than expected. Click Retry to re-submit this shot.'
-                      : 'Google Veo 3 video generation encountered a transient issue. Click Retry to generate.'}
+                      ? 'Scene generation took longer than expected. Click Retry to re-submit this scene.'
+                      : 'Scene generation encountered a transient issue. Click Retry to generate.'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 pt-1">
@@ -231,7 +231,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg transition-all active:scale-95"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
-                    <span>⚡ Retry 720p Fast</span>
+                    <span>⚡ Retry Fast Render</span>
                   </button>
                   <button
                     type="button"
@@ -239,7 +239,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-all active:scale-95"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    <span>🌟 Retry 4K Master</span>
+                    <span>🌟 Retry 4K Ultra HD</span>
                   </button>
                 </div>
               </div>
@@ -247,6 +247,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               <div className="aspect-video w-full rounded-xl overflow-hidden bg-black flex items-center justify-center">
                 <video
                   src={videoUrl}
+                  preload="metadata"
                   autoPlay
                   loop
                   muted
@@ -407,11 +408,11 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             />
           </div>
 
-          {/* 3. Veo Motion Prompt */}
+          {/* 3. Camera Motion & Reveal Prompt */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider block">
-                3. Veo 3 Video Motion Transition Prompt:
+                3. Camera Motion & Number Reveal Direction:
               </span>
               <span className="text-[10px] text-slate-400 font-mono">
                 {slot.videoPrompt?.length || 0} chars
@@ -421,7 +422,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               rows={showFullPrompt ? 3 : 2}
               value={slot.videoPrompt || ''}
               onChange={(e) => onUpdateVideoPrompt?.(slot.index, e.target.value)}
-              placeholder="Enter custom Veo 3 camera motion transition from Frame 1 to Frame N..."
+              placeholder="Enter camera motion and countdown number reveal instructions..."
               className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all resize-y leading-relaxed shadow-inner"
             />
           </div>
@@ -459,10 +460,10 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               onClick={() => onGenerateVideo(slot.index)}
               disabled={slot.isVideoLoading || slot.isImageLoading || slot.isEndImageLoading}
               className="flex items-center gap-1.5 py-2.5 px-4 rounded-2xl bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-xs font-bold border border-purple-200 dark:border-purple-800 transition-all active:scale-95 disabled:opacity-40 shadow-sm"
-              title="Synthesize 4-second Veo 3 transition from Frame 1 to Frame N"
+              title="Generate 4-second video for this scene"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-purple-600 dark:text-purple-400 ${slot.isVideoLoading ? 'animate-spin' : ''}`} />
-              <span>{slot.rawVideoUri ? 'Redo Video' : 'Synthesize Veo 3 Video'}</span>
+              <span>{slot.rawVideoUri ? 'Generate New Take' : 'Generate Scene Video'}</span>
             </button>
           )}
 

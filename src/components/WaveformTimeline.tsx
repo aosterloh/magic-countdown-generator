@@ -340,10 +340,10 @@ export const WaveformTimeline: React.FC<WaveformTimelineProps> = ({
           )}
         </div>
 
-        {/* Single-Viewport Master Scrubbing Preview Player (DEF-02) */}
+        {/* Single-Viewport Scrubbing Preview Player (DEF-02) */}
         <div className="space-y-3">
           <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
-            Master Scrubbing Player
+            Full Video Scrubbing Player
           </span>
           <div className="aspect-video w-full rounded-xl bg-black border border-slate-800 overflow-hidden relative shadow-lg flex items-center justify-center">
             {activeMapping.isDramaticPause ? (
@@ -364,7 +364,7 @@ export const WaveformTimeline: React.FC<WaveformTimelineProps> = ({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="text-xs text-slate-500">Generate videos to preview master</div>
+              <div className="text-xs text-slate-500">Generate scenes to preview full video</div>
             )}
 
             {!activeMapping.isDramaticPause && activeMapping.slotIndex > 0 && (
@@ -374,7 +374,7 @@ export const WaveformTimeline: React.FC<WaveformTimelineProps> = ({
             )}
           </div>
           <p className="text-[11px] text-slate-500 leading-relaxed">
-            As you scrub or play the master audio waveform, this viewport dynamically displays the exact synchronized clip and frame for the active timeline position.
+            As you scrub or play the audio waveform, this viewport dynamically displays the exact synchronized clip and frame for the active timeline position.
           </p>
         </div>
       </div>

@@ -17,6 +17,13 @@ export interface JobMetadata {
   readyImagesCount: number;
   readyVideosCount: number;
   hasMasterVideo: boolean;
+  masterVideoUri?: string;
+  master720pUri?: string;
+  master4kUri?: string;
+  extendedMasterVideoUri?: string;
+  extended720pUri?: string;
+  extended4kUri?: string;
+  thumbnailUri?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -32,7 +39,11 @@ export interface StoredJobState {
   currentStage: number;
   slots: any[];
   masterVideoUri?: string;
+  master720pUri?: string;
+  master4kUri?: string;
   extendedMasterVideoUri?: string;
+  extended720pUri?: string;
+  extended4kUri?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -193,6 +204,15 @@ export async function listAllJobsFromGcs(): Promise<JobMetadata[]> {
           const [contents] = await file.download();
           const state = JSON.parse(contents.toString('utf-8')) as StoredJobState;
           const slots = state.slots || [];
+          let thumbnail = slots.find((s: any) => Boolean(s.currentImageUri))?.currentImageUri
+            || slots.find((s: any) => Boolean(s.rawVideoUri))?.rawVideoUri
+            || state.masterVideoUri
+            || state.extendedMasterVideoUri
+            || '';
+
+          if (thumbnail && state.jobId) {
+            thumbnail = thumbnail.replace(/\/api\/jobs\/null\//g, `/api/jobs/${state.jobId}/`);
+          }
 
           jobs.push({
             jobId: state.jobId,
@@ -203,7 +223,14 @@ export async function listAllJobsFromGcs(): Promise<JobMetadata[]> {
             totalSlots: slots.length,
             readyImagesCount: slots.filter((s: any) => Boolean(s.currentImageUri)).length,
             readyVideosCount: slots.filter((s: any) => Boolean(s.rawVideoUri)).length,
-            hasMasterVideo: Boolean(state.masterVideoUri),
+            hasMasterVideo: Boolean(state.masterVideoUri || state.extendedMasterVideoUri),
+            masterVideoUri: state.masterVideoUri || state.master720pUri || state.master4kUri,
+            master720pUri: state.master720pUri,
+            master4kUri: state.master4kUri,
+            extendedMasterVideoUri: state.extendedMasterVideoUri || state.extended720pUri || state.extended4kUri,
+            extended720pUri: state.extended720pUri,
+            extended4kUri: state.extended4kUri,
+            thumbnailUri: thumbnail || undefined,
             createdAt: state.createdAt || new Date().toISOString(),
             updatedAt: state.updatedAt || state.createdAt || new Date().toISOString(),
           });
@@ -315,6 +342,9 @@ export async function ensureStaticAsset(
   return localFullPath;
 }
 
+// In-memory lookup cache to eliminate full GCS bucket scanning delays
+const gcsFileLookupCache = new Map<string, string>();
+
 // Download and ensure an asset exists locally in the container cache
 export async function ensureLocalAssetFile(
   uri: string,
@@ -335,7 +365,7 @@ export async function ensureLocalAssetFile(
 
   const bucket = getStorageBucket();
 
-  // Parse if uri is /api/jobs/:jobId/assets/:subfolder/:filename
+  // 1. Direct path if uri is /api/jobs/:jobId/assets/:subfolder/:filename
   const match = cleanUri.match(/^api\/jobs\/([^\/]+)\/assets\/([^\/]+)\/(.+)$/);
   if (match) {
     const [, jobId, subfolder, filePart] = match;
@@ -343,16 +373,49 @@ export async function ensureLocalAssetFile(
     const gcsFile = bucket.file(gcsPath);
     const [exists] = await gcsFile.exists();
     if (exists) {
+      gcsFileLookupCache.set(filename, gcsPath);
       await gcsFile.download({ destination: localOutput });
       return localOutput;
     }
   }
 
-  // Fallback: search GCS bucket by filename
+  // 2. Check in-memory cached GCS path
+  const cachedGcsPath = gcsFileLookupCache.get(filename);
+  if (cachedGcsPath) {
+    try {
+      const gcsFile = bucket.file(cachedGcsPath);
+      const [exists] = await gcsFile.exists();
+      if (exists) {
+        await gcsFile.download({ destination: localOutput });
+        return localOutput;
+      }
+    } catch {}
+  }
+
+  // 3. Fast direct check for common subfolders before scanning
+  const commonSubfolders = ['videos', 'master', 'extended-master', 'images', 'uploads'];
+  for (const sub of commonSubfolders) {
+    // If filename has a jobId prefix e.g. countdown_extended_master_JOBID_...
+    const potentialMatch = filename.match(/^(?:countdown_extended_master|master_countdown)_([a-zA-Z0-9_\-]+?)_/);
+    if (potentialMatch) {
+      const parsedJob = potentialMatch[1];
+      const directCandidate = `jobs/${parsedJob}/${sub}/${filename}`;
+      const gcsFile = bucket.file(directCandidate);
+      const [exists] = await gcsFile.exists();
+      if (exists) {
+        gcsFileLookupCache.set(filename, directCandidate);
+        await gcsFile.download({ destination: localOutput });
+        return localOutput;
+      }
+    }
+  }
+
+  // 4. Fallback: search GCS bucket by filename
   try {
     const [files] = await bucket.getFiles({ prefix: 'jobs/' });
     const targetFile = files.find((f) => f.name.endsWith(`/${filename}`));
     if (targetFile) {
+      gcsFileLookupCache.set(filename, targetFile.name);
       await targetFile.download({ destination: localOutput });
       return localOutput;
     }

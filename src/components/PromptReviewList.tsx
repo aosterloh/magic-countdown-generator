@@ -165,12 +165,12 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
             {isGeneratingImages ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Synthesizing Images (2 Workers)...</span>
+                <span>Rendering Keyframe Images...</span>
               </>
             ) : (
               <>
                 <Wand2 className="w-4 h-4" />
-                <span>Create Veo 3 input images</span>
+                <span>Generate Scene Visuals</span>
                 <ChevronRight className="w-4 h-4" />
               </>
             )}
@@ -332,7 +332,7 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1">
                       <Video className="w-3 h-3 text-purple-500" />
-                      <span>3. Veo 3 Video Motion Transition (Glides from Frame 1 to Frame N)</span>
+                      <span>3. Camera Motion & Reveal (Smooth transition into number '{slot.diegeticNumber}')</span>
                     </label>
                     <textarea
                       rows={2}
@@ -379,7 +379,7 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
                       <span>Frame N: End (Number #{slot.diegeticNumber})</span>
                     </div>
                     <p className="text-xs font-mono text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3 hover:line-clamp-none">
-                      {slot.endImagePrompt || `Hero close-up shot revealing physical countdown numeral '${slot.diegeticNumber}'`}
+                      {slot.endImagePrompt || `Hero close-up shot revealing countdown number '${slot.diegeticNumber}'`}
                     </p>
                   </div>
 
@@ -387,7 +387,7 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
                   <div className="p-3 rounded-xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-800/60 space-y-1">
                     <div className="text-[10px] font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1 uppercase tracking-wider">
                       <Video className="w-3 h-3" />
-                      <span>Veo 3 Motion Transition</span>
+                      <span>Camera Motion & Number Reveal</span>
                     </div>
                     <p className="text-xs font-mono text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3 hover:line-clamp-none">
                       {slot.videoPrompt || `Camera smoothly transitions from Frame 1 into Frame N.`}
@@ -402,7 +402,7 @@ export const PromptReviewList: React.FC<PromptReviewListProps> = ({
 
       {/* Bottom Information Footer */}
       <div className="pt-2 text-center text-xs text-slate-400 dark:text-slate-500">
-        All 10 prompts are coordinated for starting image framing and dynamic Veo 3 camera reveal.
+        All 10 scenes are coordinated for seamless transitions and countdown reveals.
       </div>
     </div>
   );

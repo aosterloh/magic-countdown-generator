@@ -8,6 +8,8 @@ import {
   Globe,
   AlertCircle,
   CheckCircle2,
+  ArrowDown,
+  X,
 } from 'lucide-react';
 import { UNIVERSAL_STYLE_ANCHOR } from '../utils/promptBuilder';
 
@@ -24,6 +26,7 @@ interface ThemeInputFormProps {
   initialCompanyUrl?: string;
   initialThemeContext?: string;
   initialCreatorLdap?: string;
+  onOpenStepGuide?: () => void;
 }
 
 export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
@@ -33,6 +36,7 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
   initialCompanyUrl = '',
   initialThemeContext = '',
   initialCreatorLdap = '',
+  onOpenStepGuide,
 }) => {
   // Company URL & Brand detection
   const [companyUrl, setCompanyUrl] = useState(() => {
@@ -49,13 +53,39 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
   const [detectedBrand, setDetectedBrand] = useState<string | null>(null);
   const [businessSummary, setBusinessSummary] = useState<string | null>(null);
   const [themeContext, setThemeContext] = useState(initialThemeContext);
-  const [creatorLdap, setCreatorLdap] = useState(initialCreatorLdap);
+  const [creatorLdap, setCreatorLdap] = useState(() => {
+    try {
+      const saved = localStorage.getItem('saved_google_email');
+      if (saved && saved.endsWith('@google.com') && saved !== 'user@google.com') return saved;
+    } catch {}
+    if (initialCreatorLdap && initialCreatorLdap.endsWith('@google.com') && initialCreatorLdap !== 'user@google.com') return initialCreatorLdap;
+    return '';
+  });
   const [styleAnchor, setStyleAnchor] = useState(UNIVERSAL_STYLE_ANCHOR);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isGettingIdeas, setIsGettingIdeas] = useState(false);
   const [ideasNotice, setIdeasNotice] = useState<string | null>(null);
   const [ideasError, setIdeasError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const isGoogleEmailValid = /^[a-zA-Z0-9._%+-]+@google\.com$/.test(creatorLdap.trim().toLowerCase());
+
+  // Helper pop-up callout for first-time users indicating where to enter Customer URL
+  const [showUrlHelper, setShowUrlHelper] = useState<boolean>(() => {
+    try {
+      const seen = localStorage.getItem('seen_url_helper');
+      return seen !== 'true' && !initialCompanyUrl;
+    } catch {
+      return true;
+    }
+  });
+
+  const dismissUrlHelper = () => {
+    setShowUrlHelper(false);
+    try {
+      localStorage.setItem('seen_url_helper', 'true');
+    } catch {}
+  };
 
   // Sync state if initial props change
   React.useEffect(() => {
@@ -71,8 +101,14 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
   }, [initialThemeContext]);
 
   React.useEffect(() => {
-    if (initialCreatorLdap !== undefined && !creatorLdap)
+    if (
+      initialCreatorLdap !== undefined &&
+      !creatorLdap &&
+      initialCreatorLdap.endsWith('@google.com') &&
+      initialCreatorLdap !== 'user@google.com'
+    ) {
       setCreatorLdap(initialCreatorLdap);
+    }
   }, [initialCreatorLdap]);
 
   const handleGetVisualIdeas = async () => {
@@ -82,7 +118,7 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
     let cleanedUrl = companyUrl.trim();
     if (!cleanedUrl) {
       setIdeasError(
-        'Please enter a company website URL (e.g. https://www.gema.de or gema.de).'
+        'Please enter a company website URL (e.g. company.com or https://company.com).'
       );
       return;
     }
@@ -96,7 +132,7 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
       const parsed = new URL(cleanedUrl);
       if (!parsed.hostname || !parsed.hostname.includes('.')) {
         setIdeasError(
-          'Please enter a valid domain name (e.g. gema.de or https://www.gema.de).'
+          'Please enter a valid domain name (e.g. company.com or https://company.com).'
         );
         return;
       }
@@ -131,11 +167,8 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
         setBusinessSummary(data.businessSummary);
       }
 
-      const modelDisplay = data.model?.includes('3.7')
-        ? 'Gemini 3.7 Flash'
-        : 'Gemini 3.8 Flash';
       setIdeasNotice(
-        `✨ Verified URL & researched 10 domain-authentic scenes via ${modelDisplay}!`
+        '✨ Researched your brand & crafted 10 custom countdown scenes!'
       );
     } catch (err: any) {
       setIdeasError(
@@ -148,7 +181,7 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!creatorLdap.trim()) return;
+    if (!creatorLdap.trim() || !isGoogleEmailValid) return;
     if (!themeContext.trim()) return;
 
     // Use detected brand or derive clean brand from company URL
@@ -166,11 +199,16 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
       }
     }
 
+    const cleanEmail = creatorLdap.trim().toLowerCase();
+    try {
+      localStorage.setItem('saved_google_email', cleanEmail);
+    } catch {}
+
     onGeneratePrompts(
       effectiveBrand || 'Project',
       themeContext,
       styleAnchor,
-      creatorLdap.trim(),
+      cleanEmail,
       companyUrl.trim()
     );
   };
@@ -185,9 +223,22 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              Step 1: Customer Company URL & Visual Ideas
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                Step 1: Customer Company URL & Visual Ideas
+              </h2>
+              {onOpenStepGuide && (
+                <button
+                  type="button"
+                  onClick={onOpenStepGuide}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-[#4285F4] border border-blue-500/30 hover:bg-blue-500/20 transition-colors cursor-pointer"
+                  title="Open Step 1 Guide"
+                >
+                  <Info className="w-3 h-3" />
+                  <span>Guide</span>
+                </button>
+              )}
+            </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Enter the company website URL to verify authenticity and research 10 domain-authentic countdown scenes.
             </p>
@@ -207,6 +258,54 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Customer Company Website URL + Get Visual Ideas Button */}
         <div className="space-y-2">
+          {/* First-Time User Helper Pop-up Callout */}
+          {showUrlHelper && (
+            <div className="relative p-4 rounded-2xl bg-gradient-to-r from-[#1a73e8] via-[#1557b0] to-indigo-600 text-white shadow-xl shadow-blue-500/20 border border-white/20 animate-scaleUp mb-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                    <Sparkles className="w-4 h-4 text-cyan-200 animate-pulse" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-full bg-white/25 text-[10px] font-black tracking-wider uppercase">
+                        Start Here
+                      </span>
+                      <h4 className="text-xs sm:text-sm font-black text-white">
+                        Enter Customer Website URL
+                      </h4>
+                    </div>
+                    <p className="text-xs text-blue-100 leading-relaxed">
+                      Type or paste your customer's website URL below (e.g. <span className="font-mono font-bold text-white bg-white/20 px-1 py-0.5 rounded">madsack.de</span> or <span className="font-mono font-bold text-white bg-white/20 px-1 py-0.5 rounded">bmw.com</span>) and click <strong className="text-white">Get Visual Ideas</strong>. Our creative generator will research the brand in real-time and generate 10 domain-authentic countdown scenes!
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={dismissUrlHelper}
+                  className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-all shrink-0 cursor-pointer"
+                  title="Dismiss hint"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Bouncing Pointer Arrow down toward the input */}
+              <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-white/15 text-[11px] font-bold text-cyan-100">
+                <ArrowDown className="w-3.5 h-3.5 text-cyan-200 animate-bounce" />
+                <span>Enter website URL into the glowing box below:</span>
+                <button
+                  type="button"
+                  onClick={dismissUrlHelper}
+                  className="ml-auto text-[10px] underline hover:text-white font-medium cursor-pointer"
+                >
+                  Got it, dismiss
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between mb-1">
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
               Customer Company Website URL <span className="text-rose-500">*</span>
@@ -225,12 +324,20 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
                 type="text"
                 required
                 value={companyUrl}
+                onFocus={() => {
+                  if (showUrlHelper) dismissUrlHelper();
+                }}
                 onChange={(e) => {
                   setCompanyUrl(e.target.value);
                   if (ideasError) setIdeasError(null);
+                  if (showUrlHelper) dismissUrlHelper();
                 }}
-                placeholder="e.g. https://www.gema.de or infineon.com"
-                className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm focus:outline-none focus:border-[#4285F4] focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
+                placeholder="e.g. https://company.com or company.com"
+                className={`w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border ${
+                  showUrlHelper
+                    ? 'border-[#1a73e8] ring-4 ring-blue-500/35 shadow-lg shadow-blue-500/15 animate-pulse'
+                    : 'border-slate-200 dark:border-slate-800'
+                } text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm focus:outline-none focus:border-[#4285F4] focus:ring-2 focus:ring-blue-500/20 transition-all font-medium`}
               />
             </div>
 
@@ -329,27 +436,36 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
           />
         </div>
 
-        {/* Project Owner (creatorLdap) */}
+        {/* Project Owner Google Email */}
         <div className="space-y-1.5 pt-1">
           <div className="flex items-center justify-between mb-1">
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-              Your Name or Initials (Project Owner) <span className="text-rose-500">*</span>
+              Your Google Email (Project Owner) <span className="text-rose-500">*</span>
             </label>
             <div
               className="relative group cursor-pointer"
-              title="Identifies your countdown project in the shared projects directory."
+              title="Enter your full @google.com address so you can easily locate and filter your projects in the projects library."
             >
               <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#4285F4] transition-colors" />
             </div>
           </div>
           <input
-            type="text"
+            type="email"
             required
             value={creatorLdap}
             onChange={(e) => setCreatorLdap(e.target.value)}
-            placeholder="e.g. Alex O. or AO"
-            className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm focus:outline-none focus:border-[#4285F4] focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
+            placeholder="e.g. yourname@google.com"
+            className={`w-full px-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border ${
+              creatorLdap && !isGoogleEmailValid
+                ? 'border-rose-400 dark:border-rose-500 ring-2 ring-rose-500/10'
+                : 'border-slate-200 dark:border-slate-800'
+            } text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm focus:outline-none focus:border-[#4285F4] focus:ring-2 focus:ring-blue-500/20 transition-all font-medium`}
           />
+          {creatorLdap && !isGoogleEmailValid && (
+            <p className="text-[11px] text-rose-500 dark:text-rose-400 font-medium">
+              Must be a complete Google email address ending with @google.com
+            </p>
+          )}
         </div>
 
         {showAdvanced && (
@@ -374,18 +490,18 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
           <div className="flex justify-end pt-2 animate-fadeIn">
             <button
               type="submit"
-              disabled={isLoading || !creatorLdap.trim()}
-              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-98 disabled:opacity-50 text-white font-extrabold text-sm shadow-xl shadow-blue-500/25 flex items-center justify-center gap-2.5 transition-all"
+              disabled={isLoading || !isGoogleEmailValid}
+              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 active:scale-98 disabled:opacity-50 text-white font-extrabold text-sm shadow-xl shadow-blue-500/25 flex items-center justify-center gap-2.5 transition-all"
             >
               {isLoading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Priming Countdown with Shot #10...</span>
+                  <span>Starting Scene Generation...</span>
                 </>
               ) : (
                 <>
-                  <Wand2 className="w-4 h-4" />
-                  <span>Start with Nr. 10</span>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Create Countdown Video</span>
                 </>
               )}
             </button>
@@ -398,7 +514,7 @@ export const ThemeInputForm: React.FC<ThemeInputFormProps> = ({
                 Step 1: Enter company website URL and click &quot;Get Visual Ideas&quot;
               </p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Gemini 3.8 Flash will verify your URL with Google Search Grounding and draft 10 domain-authentic countdown scenes. Once generated, the <strong>&quot;Start with Nr. 10&quot;</strong> button will unlock.
+                We'll review your company website and craft 10 brand-authentic countdown scenes. Once ready, click <strong>&quot;Create Countdown Video&quot;</strong> to generate all 10 scenes.
               </p>
             </div>
           </div>

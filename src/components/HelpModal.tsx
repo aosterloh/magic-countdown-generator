@@ -47,29 +47,29 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
     {
       num: 2,
       badge: 'Stage 2',
-      title: 'AI Diegetic Prompt Engineering',
+      title: 'Coordinated Scene Direction',
       icon: <Layers className="w-5 h-5 text-sky-500" />,
       color: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30',
       description:
-        'Gemini AI creates 10 coordinated prompts with physical numeral integration (etched metal, illuminated gauges). Customize prompts inline or tune the system instructions via the Veo 3 Prompt Guide modal.',
+        'Creates 10 coordinated scene descriptions where numbers (10 down to 1) are woven naturally into real environment objects (etched metal, illuminated gauges). Customize scenes inline or tune directives via the Creative Direction Guide in the header.',
     },
     {
       num: 3,
       badge: 'Stage 3',
-      title: 'Direct Veo 3.1 Text-to-Video Generation',
+      title: 'Cinematic Video Generation',
       icon: <Film className="w-5 h-5 text-purple-500" />,
       color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30',
       description:
-        'Google Veo 3.1 directly synthesizes 4.0s cinematic motion clips straight from prompts without intermediate starting images. Supports both Veo 3.1 Fast (Turbo) and Veo 3.1 Quality with 1-click bulk generation.',
+        'Synthesizes 4.0s motion scenes directly from creative descriptions. Automatically renders all 10 scenes with fast, high-quality parallel processing.',
     },
     {
       num: 4,
       badge: 'Stage 4',
-      title: 'Master Concat, Extended Outro & Cloud Persistence',
+      title: 'Audio Sync, Scene Tuning & Final Cut Export',
       icon: <Download className="w-5 h-5 text-emerald-500" />,
       color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
       description:
-        'Preview on the interactive waveform timeline. Export either a standalone 30s Countdown Master or an Extended Master (+ Google I/O Outro) with a 2-second crossfade transition. All master files are permanently saved to GCS.',
+        'Preview on the interactive waveform timeline synced to high-tempo countdown music. Fine-tune any scene, then export either a standalone 30s Final Cut or an Extended Full Video with a smooth 2-second crossfade. All videos are saved securely in your project library.',
     },
   ];
 
@@ -87,7 +87,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                 How Magic Countdown Generator Works
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                A modernized 4-stage AI pipeline for 30-second cinematic brand countdowns.
+                A streamlined 4-stage pipeline for 30-second cinematic brand countdowns.
               </p>
             </div>
           </div>
@@ -110,7 +110,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
               <span>What is a "Diegetic" Countdown?</span>
             </div>
             <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-              In film theory, <strong>diegetic</strong> elements exist naturally inside the story world. Instead of placing digital text on screen, our countdown numbers (10 down to 1) are physically manufactured into real environment objects (laser-etched titanium, illuminated cockpit dials, painted aircraft wings, stadium seating geometry).
+              In cinema, elements that exist naturally inside the story world rather than as floating graphics are called <strong>diegetic</strong>. Instead of placing digital text on screen, our countdown numbers (10 down to 1) are physically manufactured into real environment objects—like laser-etched titanium, illuminated dials, architectural geometry, or branded machinery.
             </p>
           </div>
 
@@ -155,13 +155,13 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             </div>
             <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-1.5 list-disc list-inside">
               <li>
-                <strong>Persistent Master Files:</strong> Master countdown videos are generated once and stored in GCS. Reopening any project instantly reloads the finished video without re-rendering.
+                <strong>Persistent Video Files:</strong> Final countdown videos are generated once and stored in your cloud project library. Reopening any project instantly reloads the finished video without re-rendering.
               </li>
               <li>
-                <strong>Dual Master Choices:</strong> Export either a standalone 30s countdown master or the extended version with the Google I/O outro and 2s crossfade transition.
+                <strong>Dual Export Choices:</strong> Export either a standalone 30s Final Cut or the extended 2-minute Full Video with the event opening video and a smooth 2-second crossfade.
               </li>
               <li>
-                <strong>Customizable Prompt Rules:</strong> Click <strong>Veo 3 Prompt Guide</strong> in the header to view or customize your prompt synthesis directives.
+                <strong>Customizable Direction Rules:</strong> Click <strong>Creative Direction Guide</strong> in the header to view or customize creative instructions.
               </li>
               <li>
                 <strong>Projects Popup:</strong> Click <strong>Projects</strong> in the header anytime to open past sessions, switch clients, or collaborate via deep links (<code className="text-[11px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">?job=...</code>).
@@ -178,7 +178,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
           >
-            <span>Open Complete Master Spec (v12.0)</span>
+            <span>Open Complete Specification (v12.0)</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </a>
 

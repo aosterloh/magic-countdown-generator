@@ -11,8 +11,8 @@ The final clips will be assembled into a 30-second opening countdown sequence fo
 
 ## Input Variables
 You will be provided with two runtime inputs:
-- `customer_domain_url`: The official corporate website URL (e.g., `https://www.gema.de`).
-- `business_summary`: A factual summary of the organization's core business, services, products, and industry.
+- `customer_domain_url`: The official corporate website URL.
+- `business_summary`: A factual summary of the organization's core business, services, products, facilities, and industry.
 
 ---
 
@@ -27,12 +27,12 @@ Veo 3.1 assigns the highest semantic weight to the first 10–15 tokens.
 ### 2. High-Luminance Contrast & Diegesis
 The numeral must exist organically within the scene while maintaining stark luminance and edge separation against its substrate:
 - **Approved Substrates:**
-  - High-visibility stencils (e.g., stark white paint on matte black textured road cases; bright safety yellow on dark architectural surfaces).
-  - High-luminance physical instrumentation (e.g., glowing warm amber LED digital segments, illuminated analog VU meters, backlit tactile switches).
-  - Dimensional raised signage (e.g., brushed brass numerals on dark acoustic walnut, raised white acrylic on dark matte composite).
+  - **High-Visibility Industrial Stencils:** Crisp, high-contrast, opaque painted lettering stenciled directly onto primary operational surfaces, structural casings, or transport containers native to the customer's operations.
+  - **Physical Instrumentation & Displays:** High-luminance backlit digital readouts, physical segmented indicators, or illuminated mechanical dials that exist as genuine hardware components within the customer's equipment or facilities.
+  - **Dimensional Raised Signage:** Physical three-dimensional numerals fabricated from materials native to the customer's real-world environment (e.g., machined alloys, technical composites, architectural stone, or industrial polymers).
 - **Strictly Banned:**
   - Low-contrast laser etchings, monochrome metal stamps, faint shadows, or tone-on-tone textures.
-  - Floating 2D digital overlays, synthetic HUD graphics, or post-production CGI watermarks.
+  - Floating 2D digital overlays, synthetic HUD graphics, post-production CGI watermarks, or artificial graphic overlays.
 
 ### 3. Stabilized Camera Framing
 A 3-second generation cut cannot resolve a transition from an extreme wide shot to a macro detail without blurring typography.
@@ -52,7 +52,7 @@ A 3-second generation cut cannot resolve a transition from an extreme wide shot 
 When receiving `customer_domain_url` and `business_summary`, execute these four steps in exact sequence:
 
 1. **Domain & Entity Grounding:** 
-   Analyze the input domain and business summary to define the customer's authentic operational universe. Strictly isolate the visual language to their actual domain (e.g., music copyright $\rightarrow$ soundstages, recording consoles, flight cases, acoustic baffles; financial services $\rightarrow$ data centers, trading floors, architectural headquarters). Do not default to generic factories, robotics, or industrial machinery unless the business summary explicitly describes heavy manufacturing.
+   Analyze the input domain and business summary to define the customer's authentic operational universe. Derive all visual language, locations, tools, machinery, and surfaces directly and exclusively from the customer's verified real-world business activities. Do not borrow props from external industries or default to generic industrial cliches unless directly corroborated by the customer's business.
 
 2. **Select 10 Authentic Physical Substrates:** 
    Map out 10 distinct, non-repetitive physical props, architectural elements, or devices directly relevant to the customer's operations to host numbers 10 down to 1.
@@ -71,3 +71,4 @@ Assemble each prompt using this exact structural syntax:
 
 ```text
 [Framing & Angle] centered on the [High-Contrast Color / Finish] numeral "[X]" prominently [stenciled / illuminated / mounted] on [Domain-Authentic Prop or Surface derived from Business Summary]. [Motivated directional lighting creating sharp edge contrast]. The camera executes a [slow, steady, controlled camera motion] while maintaining tack-sharp focus and clear legibility on the numeral "[X]" in the center of the frame. In the background, [authentic domain environment softly framed]. Shot on 35mm lens, deep focus, sharp edge definition, clean professional lighting, photorealistic.
+```
