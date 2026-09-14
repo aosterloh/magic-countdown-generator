@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Play,
   Pause,
@@ -10,6 +10,8 @@ import {
   Sparkles,
   Clock,
   ArrowRight,
+  CheckCircle2,
+  Layers,
 } from 'lucide-react';
 import { CountdownSlot } from '../types';
 import { getMediaUrl } from '../utils/media';
@@ -17,6 +19,7 @@ import { getMediaUrl } from '../utils/media';
 interface SimplifiedAudioPreviewProps {
   slots: CountdownSlot[];
   audioTrackUri: string;
+  masterVideoUri?: string | null;
   onProceedToMaster?: () => void;
   onSelectSlot?: (diegeticNumber: number) => void;
 }
@@ -26,22 +29,42 @@ interface TimelineSegment {
   startTime: number;
   duration: number;
   endTime: number;
-  trimStart: number; // For 4s raw clip, where playback begins
+  trimStart: number; // For 4s raw clip, where playback begins (1.7s Act 1, 0.7s Act 2)
   color: string;
 }
 
 export const SimplifiedAudioPreview: React.FC<SimplifiedAudioPreviewProps> = ({
   slots,
   audioTrackUri,
+  masterVideoUri,
   onProceedToMaster,
   onSelectSlot,
 }) => {
+  // Preview mode: if a finished Final Cut exists, default to 'final_cut'; otherwise 'individual_scenes'
+  const [previewMode, setPreviewMode] = useState<'final_cut' | 'individual_scenes'>(
+    masterVideoUri ? 'final_cut' : 'individual_scenes'
+  );
+
+  // Sync preview mode if masterVideoUri becomes available
+  useEffect(() => {
+    if (masterVideoUri && previewMode === 'individual_scenes') {
+      setPreviewMode('final_cut');
+    }
+  }, [masterVideoUri]);
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0.0);
   const [isMuted, setIsMuted] = useState(false);
 
+  // Audio ref for countdown music in individual scenes mode
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Single video player ref for Final Cut mode
+  const masterVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Dual-buffer ping-pong video player refs for Individual Scenes mode
+  const videoRefA = useRef<HTMLVideoElement | null>(null);
+  const videoRefB = useRef<HTMLVideoElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
   // Define the exact 30.00s golden beat grid:
@@ -103,61 +126,168 @@ export const SimplifiedAudioPreview: React.FC<SimplifiedAudioPreviewProps> = ({
   // Determine current timeline state
   const isDramaticPause = currentTime >= 9.2 && currentTime < 10.2;
 
-  const currentSegment = useMemo(() => {
-    if (isDramaticPause) return null;
-    return (
-      timelineSegments.find(
-        (seg) => currentTime >= seg.startTime && currentTime < seg.endTime
-      ) || (currentTime >= 30.0 ? timelineSegments[timelineSegments.length - 1] : timelineSegments[0])
+  const currentSegmentIndex = useMemo(() => {
+    if (isDramaticPause) return -1;
+    const idx = timelineSegments.findIndex(
+      (seg) => currentTime >= seg.startTime && currentTime < seg.endTime
     );
+    if (idx !== -1) return idx;
+    return currentTime >= 30.0 ? timelineSegments.length - 1 : 0;
   }, [currentTime, isDramaticPause, timelineSegments]);
+
+  const currentSegment = currentSegmentIndex >= 0 ? timelineSegments[currentSegmentIndex] : null;
 
   const activeSlot = useMemo(() => {
     if (!currentSegment) return null;
     return slots.find((s) => s.diegeticNumber === currentSegment.diegeticNumber) || null;
   }, [slots, currentSegment]);
 
-  const activeVideoSrc = activeSlot?.processedVideoUri || activeSlot?.rawVideoUri || null;
+  // Dual-buffer ping-pong assignment:
+  // Even segments (0: #10, 2: #8, 4: #6, 6: #4, 8: #2) -> Buffer A is ACTIVE
+  // Odd segments (1: #9, 3: #7, 5: #5, 7: #3, 9: #1)  -> Buffer B is ACTIVE
+  const activeBuffer = currentSegmentIndex >= 0 ? (currentSegmentIndex % 2 === 0 ? 'A' : 'B') : null;
 
-  // Sync active video playback time with audio clock
+  // Derive source videos for Buffer A and Buffer B
+  // Buffer A is assigned either the current even segment, or preloads the next even segment
+  // Buffer B is assigned either the current odd segment, or preloads the next odd segment
+  const { srcA, srcB, trimStartA, trimStartB } = useMemo(() => {
+    if (currentSegmentIndex < 0) {
+      // During Dramatic Pause (after #7, which was index 3/Buffer B):
+      // The upcoming scene is Scene 6 (index 4/Buffer A)
+      const seg6 = timelineSegments[4];
+      const slot6 = slots.find((s) => s.diegeticNumber === 6);
+      const uri6 = slot6?.processedVideoUri || slot6?.rawVideoUri || null;
+      return {
+        srcA: uri6 ? getMediaUrl(uri6) : '',
+        srcB: '',
+        trimStartA: seg6?.trimStart ?? 0.7,
+        trimStartB: 0,
+      };
+    }
+
+    const isCurrentA = currentSegmentIndex % 2 === 0;
+    const currentSeg = timelineSegments[currentSegmentIndex];
+    const nextSeg = currentSegmentIndex + 1 < timelineSegments.length ? timelineSegments[currentSegmentIndex + 1] : null;
+
+    const currentSlotData = slots.find((s) => s.diegeticNumber === currentSeg.diegeticNumber);
+    const nextSlotData = nextSeg ? slots.find((s) => s.diegeticNumber === nextSeg.diegeticNumber) : null;
+
+    const currentUri = currentSlotData?.processedVideoUri || currentSlotData?.rawVideoUri || null;
+    const nextUri = nextSlotData?.processedVideoUri || nextSlotData?.rawVideoUri || null;
+
+    let aUri = isCurrentA ? currentUri : nextUri;
+    let bUri = isCurrentA ? nextUri : currentUri;
+    let aTrim = isCurrentA ? currentSeg.trimStart : (nextSeg?.trimStart ?? 0);
+    let bTrim = isCurrentA ? (nextSeg?.trimStart ?? 0) : currentSeg.trimStart;
+
+    return {
+      srcA: aUri ? getMediaUrl(aUri) : '',
+      srcB: bUri ? getMediaUrl(bUri) : '',
+      trimStartA: aTrim,
+      trimStartB: bTrim,
+    };
+  }, [currentSegmentIndex, timelineSegments, slots]);
+
+  // Pre-prime standby buffer to its trimStart as soon as metadata loads
+  const handleLoadedMetadataA = useCallback(() => {
+    const video = videoRefA.current;
+    if (!video) return;
+    if (activeBuffer !== 'A') {
+      // Standby buffer: seek to target start frame and hold paused
+      video.currentTime = trimStartA;
+      video.pause();
+    }
+  }, [activeBuffer, trimStartA]);
+
+  const handleLoadedMetadataB = useCallback(() => {
+    const video = videoRefB.current;
+    if (!video) return;
+    if (activeBuffer !== 'B') {
+      // Standby buffer: seek to target start frame and hold paused
+      video.currentTime = trimStartB;
+      video.pause();
+    }
+  }, [activeBuffer, trimStartB]);
+
+  // Sync active video playback time with audio clock (Dual-Buffer Mode)
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !currentSegment || isDramaticPause) return;
+    if (previewMode === 'final_cut') return;
+
+    const activeVideo = activeBuffer === 'A' ? videoRefA.current : videoRefB.current;
+    const standbyVideo = activeBuffer === 'A' ? videoRefB.current : videoRefA.current;
+
+    if (standbyVideo && !standbyVideo.paused) {
+      standbyVideo.pause();
+    }
+
+    if (!activeVideo || !currentSegment || isDramaticPause) return;
 
     const clipElapsed = currentTime - currentSegment.startTime;
     const targetVideoTime = Math.min(4.0, Math.max(0, currentSegment.trimStart + clipElapsed));
 
-    if (Math.abs(video.currentTime - targetVideoTime) > 0.25) {
-      video.currentTime = targetVideoTime;
+    // Only seek active video if drift exceeds 0.3s (prevents stuttering during smooth playback)
+    if (Math.abs(activeVideo.currentTime - targetVideoTime) > 0.3) {
+      activeVideo.currentTime = targetVideoTime;
     }
 
-    if (isPlaying && video.paused) {
-      video.play().catch(() => {});
-    } else if (!isPlaying && !video.paused) {
-      video.pause();
+    if (isPlaying && activeVideo.paused) {
+      activeVideo.play().catch(() => {});
+    } else if (!isPlaying && !activeVideo.paused) {
+      activeVideo.pause();
     }
-  }, [currentTime, currentSegment, isDramaticPause, isPlaying, activeVideoSrc]);
+  }, [currentTime, currentSegment, isDramaticPause, isPlaying, activeBuffer, previewMode]);
 
-  // Animation frame loop tracking audio playback
+  // Final Cut mode: sync single video player
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    if (previewMode !== 'final_cut') return;
+    const masterVideo = masterVideoRef.current;
+    if (!masterVideo) return;
 
+    masterVideo.muted = isMuted;
+
+    if (isPlaying && masterVideo.paused) {
+      masterVideo.play().catch(() => {});
+    } else if (!isPlaying && !masterVideo.paused) {
+      masterVideo.pause();
+    }
+  }, [isPlaying, previewMode, isMuted]);
+
+  // Animation frame loop tracking playback time
+  useEffect(() => {
     const tick = () => {
-      if (!audio) return;
-      setCurrentTime(audio.currentTime);
-
-      if (audio.currentTime >= 30.0) {
-        audio.pause();
-        audio.currentTime = 0;
-        setCurrentTime(0);
-        setIsPlaying(false);
-        if (videoRef.current) {
-          videoRef.current.pause();
-          videoRef.current.currentTime = timelineSegments[0].trimStart;
+      if (previewMode === 'final_cut') {
+        const mv = masterVideoRef.current;
+        if (mv) {
+          setCurrentTime(mv.currentTime);
+          if (mv.currentTime >= 30.0 || mv.ended) {
+            mv.pause();
+            mv.currentTime = 0;
+            setCurrentTime(0);
+            setIsPlaying(false);
+          } else if (isPlaying) {
+            animFrameRef.current = requestAnimationFrame(tick);
+          }
         }
-      } else if (isPlaying) {
-        animFrameRef.current = requestAnimationFrame(tick);
+      } else {
+        const audio = audioRef.current;
+        if (audio) {
+          setCurrentTime(audio.currentTime);
+          if (audio.currentTime >= 30.0 || audio.ended) {
+            audio.pause();
+            audio.currentTime = 0;
+            setCurrentTime(0);
+            setIsPlaying(false);
+            if (videoRefA.current) {
+              videoRefA.current.pause();
+              videoRefA.current.currentTime = timelineSegments[0].trimStart;
+            }
+            if (videoRefB.current) {
+              videoRefB.current.pause();
+            }
+          } else if (isPlaying) {
+            animFrameRef.current = requestAnimationFrame(tick);
+          }
+        }
       }
     };
 
@@ -168,44 +298,79 @@ export const SimplifiedAudioPreview: React.FC<SimplifiedAudioPreviewProps> = ({
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [isPlaying, timelineSegments]);
+  }, [isPlaying, previewMode, timelineSegments]);
 
   const togglePlay = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    if (previewMode === 'final_cut') {
+      const mv = masterVideoRef.current;
+      if (!mv) return;
 
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-      if (videoRef.current) videoRef.current.pause();
-    } else {
-      if (currentTime >= 29.8) {
-        audio.currentTime = 0;
-        setCurrentTime(0);
+      if (isPlaying) {
+        mv.pause();
+        setIsPlaying(false);
+      } else {
+        if (currentTime >= 29.8) {
+          mv.currentTime = 0;
+          setCurrentTime(0);
+        }
+        mv.play().then(() => {
+          setIsPlaying(true);
+        }).catch((e) => {
+          console.warn('Final Cut playback prevented:', e);
+        });
       }
-      audio.play().then(() => {
-        setIsPlaying(true);
-        if (videoRef.current) videoRef.current.play().catch(() => {});
-      }).catch((e) => {
-        console.warn('Audio playback prevented:', e);
-      });
+    } else {
+      const audio = audioRef.current;
+      if (!audio) return;
+
+      if (isPlaying) {
+        audio.pause();
+        setIsPlaying(false);
+        if (videoRefA.current) videoRefA.current.pause();
+        if (videoRefB.current) videoRefB.current.pause();
+      } else {
+        if (currentTime >= 29.8) {
+          audio.currentTime = 0;
+          setCurrentTime(0);
+        }
+        audio.play().then(() => {
+          setIsPlaying(true);
+          const activeVideo = activeBuffer === 'A' ? videoRefA.current : videoRefB.current;
+          if (activeVideo && !isDramaticPause) {
+            activeVideo.play().catch(() => {});
+          }
+        }).catch((e) => {
+          console.warn('Audio playback prevented:', e);
+        });
+      }
     }
   };
 
   const handleSeek = (newTime: number) => {
     const clamped = Math.max(0, Math.min(30.0, newTime));
     setCurrentTime(clamped);
-    if (audioRef.current) {
-      audioRef.current.currentTime = clamped;
-    }
 
-    // Also update video position immediately
-    const seg = timelineSegments.find(
-      (s) => clamped >= s.startTime && clamped < s.endTime
-    );
-    if (seg && videoRef.current) {
-      const clipElapsed = clamped - seg.startTime;
-      videoRef.current.currentTime = Math.min(4.0, seg.trimStart + clipElapsed);
+    if (previewMode === 'final_cut') {
+      if (masterVideoRef.current) {
+        masterVideoRef.current.currentTime = clamped;
+      }
+    } else {
+      if (audioRef.current) {
+        audioRef.current.currentTime = clamped;
+      }
+
+      // Update active video position immediately
+      const seg = timelineSegments.find(
+        (s) => clamped >= s.startTime && clamped < s.endTime
+      );
+      if (seg) {
+        const segIdx = timelineSegments.indexOf(seg);
+        const targetVid = segIdx % 2 === 0 ? videoRefA.current : videoRefB.current;
+        if (targetVid) {
+          const clipElapsed = clamped - seg.startTime;
+          targetVid.currentTime = Math.min(4.0, seg.trimStart + clipElapsed);
+        }
+      }
     }
   };
 
@@ -217,46 +382,102 @@ export const SimplifiedAudioPreview: React.FC<SimplifiedAudioPreviewProps> = ({
   };
 
   const toggleMute = () => {
-    if (audioRef.current) {
-      audioRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
+    if (previewMode === 'final_cut') {
+      if (masterVideoRef.current) {
+        masterVideoRef.current.muted = !isMuted;
+      }
+    } else {
+      if (audioRef.current) {
+        audioRef.current.muted = !isMuted;
+      }
     }
+    setIsMuted(!isMuted);
   };
 
   const resolvedAudioUrl = getMediaUrl(audioTrackUri);
+  const resolvedMasterVideoUrl = masterVideoUri ? getMediaUrl(masterVideoUri) : null;
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 transition-colors animate-fadeIn">
-      {/* Hidden Audio Player */}
-      <audio
-        ref={audioRef}
-        src={resolvedAudioUrl}
-        preload="auto"
-        onEnded={() => {
-          setIsPlaying(false);
-          setCurrentTime(0);
-        }}
-      />
+      {/* Hidden Audio Player for Multi-Scene Mode */}
+      {previewMode === 'individual_scenes' && (
+        <audio
+          ref={audioRef}
+          src={resolvedAudioUrl}
+          preload="auto"
+          onEnded={() => {
+            setIsPlaying(false);
+            setCurrentTime(0);
+          }}
+        />
+      )}
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800/80">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-[#4285F4] border border-blue-500/20 flex items-center gap-1">
               <Music className="w-3 h-3" />
               <span>Step 4 • Auto-Timed Preview</span>
             </span>
+
+            {masterVideoUri && (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" />
+                <span>Final Cut Ready</span>
+              </span>
+            )}
+
             <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
               30-Second Countdown Preview with Music
             </h3>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Clips are automatically trimmed to match the 30-second soundtrack and beat drop before #6.
+            {previewMode === 'final_cut'
+              ? 'Playing your completed 30-second broadcast Final Cut with embedded music and sound synchronization.'
+              : 'Clips are automatically trimmed to match the 30-second soundtrack and beat drop before #6.'}
           </p>
         </div>
 
-        {/* Time & Play Controls in Header */}
-        <div className="flex items-center gap-3">
+        {/* Mode Switcher & Time/Play Controls */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {/* Toggle between Final Cut and Individual Scene Takes if Final Cut exists */}
+          {masterVideoUri && (
+            <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[11px] font-bold">
+              <button
+                type="button"
+                onClick={() => {
+                  if (isPlaying) togglePlay();
+                  setPreviewMode('final_cut');
+                }}
+                className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                  previewMode === 'final_cut'
+                    ? 'bg-[#4285F4] text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Film className="w-3 h-3" />
+                <span>Final Cut</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isPlaying) togglePlay();
+                  setPreviewMode('individual_scenes');
+                }}
+                className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                  previewMode === 'individual_scenes'
+                    ? 'bg-[#4285F4] text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Layers className="w-3 h-3" />
+                <span>Scene Takes</span>
+              </button>
+            </div>
+          )}
+
+          {/* Time Counter */}
           <div className="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono text-xs flex items-center gap-2 shadow-inner">
             <Clock className="w-3.5 h-3.5 text-[#4285F4]" />
             <span className="text-slate-700 dark:text-slate-300 font-bold">
@@ -265,6 +486,7 @@ export const SimplifiedAudioPreview: React.FC<SimplifiedAudioPreviewProps> = ({
             <span className="text-slate-400">/ 30.0s</span>
           </div>
 
+          {/* Play/Pause Button */}
           <button
             type="button"
             onClick={togglePlay}
@@ -286,47 +508,97 @@ export const SimplifiedAudioPreview: React.FC<SimplifiedAudioPreviewProps> = ({
       </div>
 
       {/* Main Preview Viewport */}
-      <div className="relative aspect-video w-full max-w-4xl mx-auto rounded-2xl bg-black border border-slate-800 overflow-hidden shadow-2xl flex items-center justify-center group">
-        {isDramaticPause ? (
-          // Solid Black Screen during Dramatic Beat Pause (9.2s -> 10.2s)
-          <div className="w-full h-full bg-black flex flex-col items-center justify-center text-center p-4 animate-fadeIn">
-            <div className="w-3 h-3 rounded-full bg-rose-500 animate-ping mb-3" />
-            <span className="font-mono text-xs font-extrabold tracking-widest text-slate-400 uppercase">
-              1.0s Beat Drop • Silence
-            </span>
-            <span className="text-[11px] text-slate-600 font-mono mt-1">
-              Music resumes with Scene #6
-            </span>
-          </div>
-        ) : activeVideoSrc ? (
+      <div className="relative aspect-video w-full max-w-4xl mx-auto rounded-2xl bg-black border border-slate-800 overflow-hidden shadow-2xl flex items-center justify-center group select-none">
+        {/* MODE 1: Finished Final Cut Mode (Single Continuous 30s MP4) */}
+        {previewMode === 'final_cut' && resolvedMasterVideoUrl ? (
           <video
-            ref={videoRef}
-            key={currentSegment?.diegeticNumber}
-            src={getMediaUrl(activeVideoSrc)}
-            muted
+            ref={masterVideoRef}
+            src={resolvedMasterVideoUrl}
             playsInline
             className="w-full h-full object-cover"
           />
-        ) : activeSlot?.currentImageUri ? (
-          <img
-            src={getMediaUrl(activeSlot.currentImageUri)}
-            alt={`Scene #${currentSegment?.diegeticNumber}`}
-            className="w-full h-full object-cover"
-          />
         ) : (
-          <div className="text-xs text-slate-500 font-mono">
-            Waiting for scene #{currentSegment?.diegeticNumber || 10}...
-          </div>
+          /* MODE 2: Dual-Buffer Ping-Pong Video Player for Individual Scenes (Zero Black Frames) */
+          <>
+            {/* Visual Poster Backdrop: Active Scene Keyframe Image (Prevents any blank voids) */}
+            <div className="absolute inset-0 z-0 flex items-center justify-center bg-slate-950">
+              {activeSlot?.currentImageUri ? (
+                <img
+                  src={getMediaUrl(activeSlot.currentImageUri)}
+                  alt={`Scene #${currentSegment?.diegeticNumber}`}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="text-xs text-slate-600 font-mono">
+                  Loading scene #{currentSegment?.diegeticNumber || 10}...
+                </div>
+              )}
+            </div>
+
+            {/* Video Buffer A (Active on Even Segments: 10, 8, 6, 4, 2) */}
+            {srcA && (
+              <video
+                ref={videoRefA}
+                src={srcA}
+                muted
+                playsInline
+                preload="auto"
+                onLoadedMetadata={handleLoadedMetadataA}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-150 ${
+                  !isDramaticPause && activeBuffer === 'A'
+                    ? 'opacity-100 z-10'
+                    : 'opacity-0 z-0 pointer-events-none'
+                }`}
+              />
+            )}
+
+            {/* Video Buffer B (Active on Odd Segments: 9, 7, 5, 3, 1) */}
+            {srcB && (
+              <video
+                ref={videoRefB}
+                src={srcB}
+                muted
+                playsInline
+                preload="auto"
+                onLoadedMetadata={handleLoadedMetadataB}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-150 ${
+                  !isDramaticPause && activeBuffer === 'B'
+                    ? 'opacity-100 z-10'
+                    : 'opacity-0 z-0 pointer-events-none'
+                }`}
+              />
+            )}
+
+            {/* Dramatic Silence Pause Drop Screen (9.2s -> 10.2s) */}
+            {isDramaticPause && (
+              <div className="absolute inset-0 z-20 w-full h-full bg-black flex flex-col items-center justify-center text-center p-4 animate-fadeIn">
+                <div className="w-3 h-3 rounded-full bg-rose-500 animate-ping mb-3" />
+                <span className="font-mono text-xs font-extrabold tracking-widest text-slate-400 uppercase">
+                  1.0s Beat Drop • Silence
+                </span>
+                <span className="text-[11px] text-slate-600 font-mono mt-1">
+                  Music resumes with Scene #6
+                </span>
+              </div>
+            )}
+          </>
         )}
 
         {/* Overlay Badges */}
         {!isDramaticPause && currentSegment && (
-          <div className="absolute top-4 left-4 flex items-center gap-2">
+          <div className="absolute top-4 left-4 z-30 flex items-center gap-2">
             <span className="px-3 py-1.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 text-xs font-mono font-bold text-white shadow-lg flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${currentSegment.color}`} />
               <span>Scene #{currentSegment.diegeticNumber}</span>
               <span className="text-slate-400 font-normal">({currentSegment.duration.toFixed(1)}s)</span>
             </span>
+
+            {previewMode === 'final_cut' && (
+              <span className="px-2.5 py-1.5 rounded-xl bg-emerald-950/80 backdrop-blur-md border border-emerald-500/30 text-[10px] font-mono font-bold text-emerald-300 shadow flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                <span>Final Cut</span>
+              </span>
+            )}
           </div>
         )}
 
@@ -335,7 +607,7 @@ export const SimplifiedAudioPreview: React.FC<SimplifiedAudioPreviewProps> = ({
           <button
             type="button"
             onClick={togglePlay}
-            className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-[#4285F4]/90 hover:bg-[#4285F4] text-white flex items-center justify-center shadow-2xl shadow-blue-500/50 transition-all hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-sm"
+            className="absolute inset-0 m-auto z-30 w-16 h-16 rounded-full bg-[#4285F4]/90 hover:bg-[#4285F4] text-white flex items-center justify-center shadow-2xl shadow-blue-500/50 transition-all hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-sm"
             title="Play Preview"
           >
             <Play className="w-7 h-7 fill-white ml-1" />
@@ -343,11 +615,11 @@ export const SimplifiedAudioPreview: React.FC<SimplifiedAudioPreviewProps> = ({
         )}
 
         {/* Bottom Floating Bar with Playback Controls */}
-        <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 shadow-lg">
+        <div className="absolute bottom-3 right-3 z-30 flex items-center gap-2 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 shadow-lg">
           <button
             type="button"
             onClick={handleRestart}
-            className="p-1.5 text-slate-300 hover:text-white transition-colors"
+            className="p-1.5 text-slate-300 hover:text-white transition-colors cursor-pointer"
             title="Restart Countdown"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -355,7 +627,7 @@ export const SimplifiedAudioPreview: React.FC<SimplifiedAudioPreviewProps> = ({
           <button
             type="button"
             onClick={toggleMute}
-            className="p-1.5 text-slate-300 hover:text-white transition-colors"
+            className="p-1.5 text-slate-300 hover:text-white transition-colors cursor-pointer"
             title={isMuted ? 'Unmute' : 'Mute'}
           >
             {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5" />}

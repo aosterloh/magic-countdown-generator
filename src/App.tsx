@@ -1847,6 +1847,7 @@ export const App: React.FC = () => {
               <SimplifiedAudioPreview
                 slots={slots}
                 audioTrackUri="/countdown/countdown_track.mp3"
+                masterVideoUri={masterVideoUri || master720pUri || master4kUri}
                 onProceedToMaster={() => setShowExportModal(true)}
                 onSelectSlot={handleSelectSequentialSlot}
               />
